@@ -1,0 +1,4 @@
+backend/target/
+backend/*.db
+backend/data/
+.DS_Store

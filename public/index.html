@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harstad Makers</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>Harstad Makers</h1>
+      </div>
+      <nav>
+        <a href="#overview">Overview</a>
+        <a href="#door-access">Door access</a>
+        <a href="#api">API</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Community workspace</p>
+          <h2>Tilgang Til Lokalene</h2>
+          <p>
+            Denne nettsiden kan du bruke til å låse opp døra!
+          </p>
+          <div id="admin-actions" class="actions hidden">
+            <button id="load-members">Hent medlemmer</button>
+            <button id="register-member" class="primary">Registrer denne nettleseren</button>
+            <button id="request-challenge">Be om dør-challenge</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div id="admin-summary">
+          <h3>Access status</h3>
+          <div id="status-box" class="status-box neutral">Venter på innsjekk.</div>
+          <ul id="member-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="door-access" class="panel">
+        <div id="member-status" class="status-box neutral hidden">Venter på innsjekk.</div>
+        <div id="register-panel" class="flow-panel hidden">
+          <h3>Registrer denne nettleseren</h3>
+          <p class="panel-copy">Denne visningen brukes for vanlige medlemmer før nettleseren er registrert.</p>
+          <div class="stack compact-stack">
+            <label>
+              Fullt navn
+              <input id="register-member-name" type="text" placeholder="Jane Maker" autocomplete="name" />
+            </label>
+            <label>
+              E-post
+              <input id="register-member-email" type="email" placeholder="jane@harstadmakers.no" autocomplete="email" />
+            </label>
+            <button id="register-browser" class="primary wide-button">Registrer denne nettleseren</button>
+          </div>
+        </div>
+
+        <div id="member-panel" class="flow-panel hidden">
+          <h3>Klar til å låse opp</h3>
+          <p id="member-panel-copy" class="panel-copy">Nettleseren er registrert. Trykk for å starte hele opplåsingsflyten.</p>
+          <div class="single-action-card">
+            <div>
+              <p class="card-label">Registrert medlems-ID</p>
+              <p id="registered-member-id" class="member-id-value"></p>
+            </div>
+            <div class="button-stack">
+              <button id="unlock-door-quick" class="primary wide-button">Lås opp døra</button>
+              <button id="delete-browser-registration" class="subtle-button wide-button">Slett denne nettleserregistreringen</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="admin-panel" class="flow-panel hidden">
+          <h3>Opplåsing av dør i X enkle steg...</h3>
+          <div class="stack">
+          <label>
+            Medlems ID
+            <input id="member-id" type="text" value="demo-member" />
+          </label>
+          <label>
+            Fullt navn
+            <input id="admin-member-name" type="text" placeholder="Jane Maker" autocomplete="off" />
+          </label>
+          <label>
+            E-post
+            <input id="admin-member-email" type="email" placeholder="jane@harstadmakers.no" autocomplete="off" />
+          </label>
+          <label>
+            Challenge ID
+            <input id="challenge-id" type="text" placeholder="Returneres fra backend" />
+          </label>
+          <label>
+            Dekryptert nonce fra mobilappen
+            <input id="decrypted-nonce" type="text" placeholder="Appen dekrypterte challenge-bytene her" />
+          </label>
+            <button id="unlock-door" class="primary">Lås opp døra</button>
+          </div>
+        </div>
+
+        <div class="result-box">
+          <h4>Challenge-data</h4>
+          <pre id="challenge-output">Ikke mottatt challenge enda.</pre>
+        </div>
+      </section>
+
+      <section id="api" class="panel">
+        <h3>Backend API</h3>
+        <pre>
+GET /health
+GET /api/members
+      POST /api/members
+POST /api/challenge
+POST /api/door/unlock
+        </pre>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
