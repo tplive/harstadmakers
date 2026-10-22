@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D-printere til salgs</title>
+    <style>
+      :root {
+        font-family: Inter, system-ui, "Segoe UI", Roboto, sans-serif;
+        color: #111827;
+        background: #f4f6f8;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { min-height: 100vh; }
+      header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #2563eb 100%);
+        color: #fff;
+        padding: 56px 24px 72px;
+        text-align: center;
+      }
+      header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -0.02em; }
+      header p { margin-top: 12px; font-size: 1.05rem; opacity: 0.85; max-width: 640px; margin-left: auto; margin-right: auto; }
+      .badges { margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      .badge {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 999px;
+        padding: 6px 16px;
+        font-size: 0.85rem;
+      }
+      main { max-width: 1100px; margin: -32px auto 0; padding: 0 20px 64px; }
+      .toolbar {
+        display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+        background: #fff; border-radius: 14px; padding: 12px;
+        box-shadow: 0 8px 24px rgba(15,23,42,0.12);
+        margin-bottom: 28px;
+      }
+      .toolbar button {
+        border: 1px solid #dbe2ea; background: #fff; color: #334155;
+        padding: 8px 16px; border-radius: 999px; font-size: 0.9rem; cursor: pointer;
+      }
+      .toolbar button.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+      .toolbar button:hover:not(.active) { background: #f1f5f9; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+      }
+      .card {
+        background: #fff; border-radius: 16px; overflow: hidden;
+        box-shadow: 0 4px 16px rgba(15,23,42,0.08);
+        display: flex; flex-direction: column;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(15,23,42,0.15); }
+      .card.hidden { display: none; }
+      .imgwrap {
+        position: relative; aspect-ratio: 4 / 3; background: #e8edf3; overflow: hidden;
+      }
+      .imgwrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .ph {
+        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        color: #64748b; font-size: 0.85rem; flex-direction: column; gap: 8px;
+      }
+      .ph svg { width: 56px; height: 56px; opacity: 0.5; }
+      .tag {
+        position: absolute; top: 12px; left: 12px;
+        font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+        padding: 4px 10px; border-radius: 999px; color: #fff;
+      }
+      .tag.fdm { background: #2563eb; }
+      .tag.defect { background: #dc2626; }
+      .tag.sold { background: #16a34a; }
+      .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+      .body h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
+      .meta { font-size: 0.85rem; color: #64748b; }
+      .desc { font-size: 0.92rem; color: #334155; line-height: 1.5; flex: 1; }
+      .desc ul { margin-left: 18px; }
+      .notice {
+        font-size: 0.82rem; color: #991b1b; background: #fef2f2;
+        border: 1px solid #fecaca; border-radius: 8px; padding: 6px 10px;
+      }
+      .price {
+        margin-top: 8px; display: flex; align-items: baseline; justify-content: space-between;
+        border-top: 1px solid #eef2f6; padding-top: 12px;
+      }
+      .price strong { font-size: 1.3rem; color: #1d4ed8; }
+      .price span { font-size: 0.75rem; color: #94a3b8; }
+      footer { text-align: center; padding: 40px 24px 56px; color: #64748b; font-size: 0.9rem; }
+      footer a { color: #1d4ed8; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>3D-printere til salgs</h1>
+      <p>Brukte FDM-printere fra eget maker-miljø — fra store, innkapslede maskiner til kompakte miniprintere. Se bilder, spesifikasjoner og pris under. Ta kontakt for demonstrasjon eller henting.</p>
+      <div class="badges">
+        <span class="badge">8 bilder</span>
+        <span class="badge">FDM-teknologi</span>
+        <span class="badge">Hentes / sendes</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="toolbar" id="toolbar">
+        <button class="active" data-filter="all">Alle</button>
+        <button data-filter="ok">I arbeidsorden</button>
+        <button data-filter="defect">Til reservedeler</button>
+      </div>
+
+      <div class="grid" id="grid">
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005301.jpg" alt="Raise3D N2 Plus, innkapslet FDM-printer med dobbel ekstruder"
+                 onerror="this.outerHTML=ph('Bilde: Raise3D N2 Plus')" />
+            <span class="tag fdm">FDM · Innkapslet</span>
+          </div>
+          <div class="body">
+            <h2>Raise3D N2 Plus</h2>
+            <div class="meta">FDM · Dobbelt ekstruderingssystem</div>
+            <p class="desc">Innkapslet storformat-printer med lukket kammer og doble ekstrudere — perfekt for tekniske materialer og store bygg. Var i drift med pågående utskrift ved fotografering.</p>
+            <div class="price"><strong>8 500 kr</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005302.jpg" alt="Dream Maker Overlord Pro, svart FDM-printer med frontpanel i glass"
+                 onerror="this.outerHTML=ph('Bilde: Overlord Pro')" />
+            <span class="tag fdm">FDM</span>
+          </div>
+          <div class="body">
+            <h2>Dream Maker Overlord Pro</h2>
+            <div class="meta">FDM · Ett ekstruderhode · Varmerplate</div>
+            <p class="desc">Stilig svart ramme med gjennomsiktig frontpanel, digital skjerm og oppvarmet byggplate. Plettfri stand i akkurat den standen du ser på bildet.</p>
+            <div class="price"><strong>2 500 kr</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005303.jpg" alt="To Wanhao Duplicator i3 Mini-printere på benk"
+                 onerror="this.outerHTML=ph('Bilde: 2× Duplicator i3 Mini')" />
+            <span class="tag fdm">FDM · 2 stk</span>
+          </div>
+          <div class="body">
+            <h2>Wanhao Duplicator i3 Mini × 2</h2>
+            <div class="meta">FDM · Kompakt · Sett med filament</div>
+            <p class="desc">To kompakte miniprintere i fin stand — ideelle som førstegangsmaskiner eller for små utskrifter. Bunnplater og kontrollpanel med ratt og skjerm. Følg med hvitt og rødt filament.</p>
+            <div class="price"><strong>1 200 kr / stk</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="defect">
+          <div class="imgwrap">
+            <img src="1000005304.jpg" alt="Prusa i3 MK3 med blå ramme, merket som defekt"
+                 onerror="this.outerHTML=ph('Bilde: Prusa i3 MK3')" />
+            <span class="tag defect">Defekt · Reservedeler</span>
+          </div>
+          <div class="body">
+            <h2>Prusa i3 MK3</h2>
+            <div class="meta">FDM · Blå ramme</div>
+            <p class="desc">Kjent arbeidshest med blå ramme og rotatorisk kontrollpanel. Sælges som defekt — egnet til reservedeler eller reparasjonsprosjekt.</p>
+            <p class="notice">Merket «funker ikke» på maskinen — selges som den er.</p>
+            <div class="price"><strong>1 000 kr</strong><span>Reservedeler</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005305.jpg" alt="Svart FDM-printer sett fra siden, med filamentsspole"
+                 onerror="this.outerHTML=ph('Bilde: Ukjent svart FDM-printer')" />
+            <span class="tag fdm">FDM</span>
+          </div>
+          <div class="body">
+            <h2>Svart FDM-printer (merke/modell uvisst)</h2>
+            <div class="meta">FDM · Ett ekstruderhode</div>
+            <p class="desc">Velholdt svart printer med filamentspole og PTFE-rør til ekstruderen. Merke og modell er ikke synlig på bildet — ta kontakt for detaljer og testing.</p>
+            <div class="price"><strong>1 500 kr</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005306.jpg" alt="Wanhao Duplicator i3 Mini med hvit filamentsspole på toppen"
+                 onerror="this.outerHTML=ph('Bilde: Duplicator i3 Mini')" />
+            <span class="tag fdm">FDM</span>
+          </div>
+          <div class="body">
+            <h2>Wanhao Duplicator i3 Mini</h2>
+            <div class="meta">FDM · Spolemontering på toppen</div>
+            <p class="desc">Kompakt og enkel å bruke, med filamentspole montert på toppen. Brukt, men velholdt stand. Følg med hvitt filament.</p>
+            <div class="price"><strong>1 000 kr</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="defect">
+          <div class="imgwrap">
+            <img src="1000005307.jpg" alt="Wanhao Duplicator i3 Mini merket «funker ikke», med gule LEGO-klosser på siden"
+                 onerror="this.outerHTML=ph('Bilde: Duplicator i3 Mini (defekt)')" />
+            <span class="tag defect">Defekt · Reservedeler</span>
+          </div>
+          <div class="body">
+            <h2>Wanhao Duplicator i3 Mini</h2>
+            <div class="meta">FDM · Med tilbehør</div>
+            <p class="desc">Duplicator i3 Mini med montret tilbehør og en kreativ LEGO-modifikasjon på siden. Sælges som defekt — fin reservedeledonor til de andre i3 Mini-maskinene.</p>
+            <p class="notice">Merket «funker ikke» på kontrollboksen — selges som den er.</p>
+            <div class="price"><strong>500 kr</strong><span>Reservedeler</span></div>
+          </div>
+        </article>
+
+        <article class="card" data-state="ok">
+          <div class="imgwrap">
+            <img src="1000005308.jpg" alt="Wanhao Duplicator i3 Mini omgitt av filament, verktøy og tilbehør"
+                 onerror="this.outerHTML=ph('Bilde: Duplicator i3 Mini + tilbehør')" />
+            <span class="tag fdm">FDM · M. tilbehør</span>
+          </div>
+          <div class="body">
+            <h2>Wanhao Duplicator i3 Mini + tilbehør</h2>
+            <div class="meta">FDM · Følger med filament og verktøy</div>
+            <p class="desc">Duplicator i3 Mini i brukstand, omgitt av grønn og hvit filament samt verktøy og annet tilbehør som følger med i kjøpet.</p>
+            <div class="price"><strong>1 000 kr</strong><span>Pris u.p.a.</span></div>
+          </div>
+        </article>
+
+      </div>
+    </main>
+
+    <footer>
+      <p>Interessert? Ta kontakt for uttesting, flere bilder eller avtale om henting/fragt.</p>
+      <p style="margin-top:8px"><a href="mailto:eksempel@epost.no">eksempel@epost.no</a> · Alle priser er foreslåtte og kan justeres.</p>
+    </footer>
+
+    <script>
+      // Placeholder mens de ekte bildene mangler: legg HTML-filen i samme mappe
+      // som bildene (1000005301.jpg … 1000005308.jpg) for å vise dem.
+      function ph(text) {
+        return '<div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16l4.5-4.5a2 2 0 012.8 0L16 16"/><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="9.5" r="1"/></svg><span>' + text + '</span></div>';
+      }
+
+      document.getElementById("toolbar").addEventListener("click", function (e) {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        this.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        const f = btn.dataset.filter;
+        document.querySelectorAll(".card").forEach(function (card) {
+          card.classList.toggle("hidden", f !== "all" && card.dataset.state !== f);
+        });
+      });
+    </script>
+  </body>
+</html>
