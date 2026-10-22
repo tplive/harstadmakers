@@ -2,10 +2,10 @@
 
 ## Scope and operating model
 
-- [ ] Remove the admin concept from the API.
-- [ ] Treat admin approval as a manual server-side action on the Raspberry Pi.
-- [ ] Require operators to log into the RPI and edit `members.json` directly for approvals.
-- [ ] Require operators to log into the RPI and edit `members.json` directly to grant or revoke admin status.
+- [X] Remove the admin concept from the API.
+- [X] Treat approval as a manual server-side action on the Raspberry Pi.
+- [X] Require operators to log into the RPI and edit `members.json` directly for approvals.
+- [X] Require operators to log into the RPI and edit `members.json` directly to grant or revoke debug status.
 - [ ] Document that the backend server is trusted and physically controls the door strike.
 
 ## Authentication and authorization
@@ -13,7 +13,7 @@
 - [ ] Require possession of the registered private key for all member actions.
 - [ ] Bind each member account to a single public key stored in `members.json`.
 - [ ] Reject any unlock attempt that does not prove possession of the matching private key.
-- [ ] Remove any API-driven path for promoting users to admin.
+- [ ] Remove any API-driven path for promoting users to debug mode.
 - [ ] Remove any API-driven path for approving pending members.
 
 ## Challenge and unlock flow
@@ -40,7 +40,7 @@
 - [ ] Restrict file permissions so only the service operator can edit them.
 - [ ] Back up `members.json` before manual edits.
 - [ ] Validate JSON after every manual edit.
-- [ ] Keep a change log of manual membership and admin updates.
+- [ ] Keep a change log of manual membership and debug updates.
 
 ## Logging and secrets
 
