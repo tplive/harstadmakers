@@ -37,21 +37,21 @@ import {
 const API_BASE = resolveApiBase();
 
 const memberListEl = document.getElementById('member-list');
-const adminSummaryEl = document.getElementById('admin-summary');
+const debugSummaryEl = document.getElementById('debug-summary');
 const statusBox = document.getElementById('status-box');
 const memberStatusEl = document.getElementById('member-status');
 const challengeOutput = document.getElementById('challenge-output');
-const adminActionsEl = document.getElementById('admin-actions');
+const debugActionsEl = document.getElementById('debug-actions');
 const registerPanelEl = document.getElementById('register-panel');
 const memberPanelEl = document.getElementById('member-panel');
-const adminPanelEl = document.getElementById('admin-panel');
+const debugPanelEl = document.getElementById('debug-panel');
 const registeredMemberIdEl = document.getElementById('registered-member-id');
 const memberPanelCopyEl = document.getElementById('member-panel-copy');
 const memberIdField = document.getElementById('member-id');
 const registerMemberNameField = document.getElementById('register-member-name');
 const registerMemberEmailField = document.getElementById('register-member-email');
-const adminMemberNameField = document.getElementById('admin-member-name');
-const adminMemberEmailField = document.getElementById('admin-member-email');
+const debugMemberNameField = document.getElementById('debug-member-name');
+const debugMemberEmailField = document.getElementById('debug-member-email');
 const challengeIdField = document.getElementById('challenge-id');
 const decryptedNonceField = document.getElementById('decrypted-nonce');
 const registerBrowserButton = document.getElementById('register-browser');
@@ -61,7 +61,7 @@ const deleteRegistrationButton = document.getElementById('delete-browser-registr
 const viewState = {
   members: [],
   currentMember: null,
-  isAdmin: false,
+  isDebug: false,
   isRegistered: false,
 };
 
@@ -83,27 +83,27 @@ function updateCurrentMember(members = viewState.members) {
   viewState.currentMember = Array.isArray(members)
     ? members.find((member) => member.id === storedMemberId) || null
     : null;
-  viewState.isAdmin = Boolean(viewState.currentMember?.is_admin);
+  viewState.isDebug = Boolean(viewState.currentMember?.is_debug);
 }
 
 function renderMode() {
   const storedMemberId = getStoredMemberId();
   registeredMemberIdEl.textContent = storedMemberId || 'Ikke registrert enda';
 
-  if (viewState.isAdmin) {
-    setHidden(adminSummaryEl, false);
+  if (viewState.isDebug) {
+    setHidden(debugSummaryEl, false);
     setHidden(memberStatusEl, true);
-    setHidden(adminActionsEl, false);
-    setHidden(adminPanelEl, false);
+    setHidden(debugActionsEl, false);
+    setHidden(debugPanelEl, false);
     setHidden(registerPanelEl, true);
     setHidden(memberPanelEl, true);
     return;
   }
 
-  setHidden(adminSummaryEl, true);
+  setHidden(debugSummaryEl, true);
   setHidden(memberStatusEl, false);
-  setHidden(adminActionsEl, true);
-  setHidden(adminPanelEl, true);
+  setHidden(debugActionsEl, true);
+  setHidden(debugPanelEl, true);
 
   if (!viewState.isRegistered) {
     setHidden(registerPanelEl, false);
@@ -128,7 +128,7 @@ function setStatus(message, type = 'neutral') {
   memberStatusEl.textContent = message;
   memberStatusEl.className = `status-box ${type}`;
 
-  if (!viewState.isAdmin) {
+  if (!viewState.isDebug) {
     memberStatusEl.classList.remove('hidden');
   }
 }
@@ -143,7 +143,7 @@ function renderMembers(members) {
 
   members.forEach((member) => {
     const item = document.createElement('li');
-    const role = member.is_admin ? 'admin' : (member.active ? 'active' : 'pending');
+    const role = member.is_debug ? 'debug' : (member.active ? 'active' : 'pending');
     item.textContent = `${member.name} · ${member.email} · ${role}`;
     memberListEl.appendChild(item);
   });
@@ -158,7 +158,7 @@ async function loadMembers({ silent = false } = {}) {
     renderMembers(members);
     renderMode();
 
-    if (!silent && viewState.isAdmin) {
+    if (!silent && viewState.isDebug) {
       setStatus(`Loaded ${members.length} member(s).`, 'success');
     }
   } catch (error) {
@@ -172,8 +172,8 @@ async function loadMembers({ silent = false } = {}) {
 }
 
 async function registerMember() {
-  const activeNameField = viewState.isAdmin ? adminMemberNameField : registerMemberNameField;
-  const activeEmailField = viewState.isAdmin ? adminMemberEmailField : registerMemberEmailField;
+  const activeNameField = viewState.isDebug ? debugMemberNameField : registerMemberNameField;
+  const activeEmailField = viewState.isDebug ? debugMemberEmailField : registerMemberEmailField;
   const name = activeNameField.value.trim();
   const email = activeEmailField.value.trim();
 
