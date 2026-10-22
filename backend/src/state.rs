@@ -82,7 +82,7 @@ impl AppState {
             email: payload.email,
             public_key_pem,
             active: false,
-            is_admin: false,
+            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -108,7 +108,7 @@ impl AppState {
     pub fn approve_member_registration(
         &self,
         member_id: &str,
-        _admin_member_id: &str,
+        _debug_member_id: &str,
     ) -> Result<Member> {
         let mut members = self.members.write().unwrap();
         let member = members
@@ -250,12 +250,12 @@ mod tests {
     fn demo_member_data_bootstraps() {
         let member = create_demo_member();
         assert!(member.public_key_pem.contains("BEGIN RSA PUBLIC KEY"));
-        assert!(member.is_admin);
+        assert!(member.is_debug);
         assert!(member.active);
     }
 
     #[test]
-    fn active_member_can_be_activated_without_admin_gating() {
+    fn active_member_can_be_activated_without_debug_gating() {
         let state = temp_state();
 
         let member = Member {
@@ -264,7 +264,7 @@ mod tests {
             email: "pending@harstadmakers.no".to_string(),
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
-            is_admin: false,
+            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -275,7 +275,7 @@ mod tests {
         }
 
         assert!(state
-            .approve_member_registration(&member.id, "ignored-admin")
+            .approve_member_registration(&member.id, "ignored-debug")
             .is_ok());
 
         {
@@ -296,7 +296,7 @@ mod tests {
             email: "inactive@harstadmakers.no".to_string(),
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
-            is_admin: false,
+            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -363,7 +363,7 @@ mod tests {
             email: "active@harstadmakers.no".to_string(),
             public_key_pem: create_demo_member().public_key_pem,
             active: true,
-            is_admin: false,
+            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };

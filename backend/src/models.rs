@@ -9,7 +9,7 @@ pub struct Member {
     #[serde(default)]
     pub active: bool,
     #[serde(default)]
-    pub is_admin: bool,
+    pub is_debug: bool,
     pub created_at: String,
     #[serde(default)]
     pub last_used: Option<String>,
@@ -43,7 +43,7 @@ pub struct NewMemberRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApproveMemberRequest {
-    pub admin_member_id: String,
+    pub debug_member_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -66,7 +66,7 @@ async fn approve_member_handler(
     Path(member_id): Path<String>,
     Json(payload): Json<ApproveMemberRequest>,
 ) -> impl IntoResponse {
-    match state.approve_member_registration(&member_id, &payload.admin_member_id) {
+    match state.approve_member_registration(&member_id, &payload.debug_member_id) {
         Ok(member) => (StatusCode::OK, Json(serde_json::to_value(member).unwrap())),
         Err(error) => (
             StatusCode::FORBIDDEN,

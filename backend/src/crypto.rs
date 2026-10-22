@@ -122,7 +122,7 @@ pub fn create_demo_member() -> Member {
         email: "demo@harstadmakers.no".to_string(),
         public_key_pem,
         active: true,
-        is_admin: true,
+        is_debug: true,
         created_at: Utc::now().to_rfc3339(),
         last_used: None,
     }
