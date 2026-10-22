@@ -3,8 +3,6 @@ use chrono::Utc;
 use rsa::{pkcs1::DecodeRsaPublicKey, RsaPublicKey};
 use std::{
     collections::HashMap,
-    fs,
-    path::PathBuf,
     sync::{Arc, RwLock},
 };
 use uuid::Uuid;
@@ -18,6 +16,7 @@ use crate::{
         ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, Member, NewMemberRequest,
         RegistrationResponse, UnlockRequest, UnlockResponse,
     },
+    persistence::{EventRepository, MemberRepository},
 };
 
 #[derive(Clone)]
@@ -26,30 +25,27 @@ pub struct AppState {
     pub challenges: Arc<RwLock<HashMap<String, ChallengeRecord>>>,
     pub events: Arc<RwLock<Vec<DoorEvent>>>,
     server_identity: ServerIdentity,
-    members_path: PathBuf,
-    events_path: PathBuf,
+    member_repository: Arc<dyn MemberRepository>,
+    event_repository: Arc<dyn EventRepository>,
 }
 
 impl AppState {
-    pub fn new(data_dir: PathBuf, server_identity: ServerIdentity) -> Result<Self> {
-        fs::create_dir_all(&data_dir)?;
-
-        let members_path = data_dir.join("members.json");
-        let events_path = data_dir.join("door_events.json");
-
-        let members = match fs::read_to_string(&members_path) {
-            Ok(json) => serde_json::from_str::<Vec<Member>>(&json).unwrap_or_else(|_| {
-                let demo = create_demo_member();
-                vec![demo]
-            }),
+    pub fn new(
+        server_identity: ServerIdentity,
+        repositories: crate::persistence::FileRepositories,
+    ) -> Result<Self> {
+        // Load members from repository
+        let members = match repositories.members.load_all() {
+            Ok(members) => members,
             Err(_) => {
                 let demo = create_demo_member();
                 vec![demo]
             }
         };
 
-        let events = match fs::read_to_string(&events_path) {
-            Ok(json) => serde_json::from_str::<Vec<DoorEvent>>(&json).unwrap_or_default(),
+        // Load events from repository
+        let events = match repositories.events.load_all() {
+            Ok(events) => events,
             Err(_) => Vec::new(),
         };
 
@@ -58,8 +54,8 @@ impl AppState {
             challenges: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(RwLock::new(events)),
             server_identity,
-            members_path,
-            events_path,
+            member_repository: Arc::new(repositories.members),
+            event_repository: Arc::new(repositories.events),
         };
 
         state.persist_members()?;
@@ -224,14 +220,14 @@ impl AppState {
     }
 
     fn persist_members(&self) -> Result<()> {
-        let json = serde_json::to_string_pretty(&*self.members.read().unwrap())?;
-        fs::write(&self.members_path, json)?;
+        let members = self.members.read().unwrap();
+        self.member_repository.save_all(&*members)?;
         Ok(())
     }
 
     fn persist_events(&self) -> Result<()> {
-        let json = serde_json::to_string_pretty(&*self.events.read().unwrap())?;
-        fs::write(&self.events_path, json)?;
+        let events = self.events.read().unwrap();
+        self.event_repository.save_all(&*events)?;
         Ok(())
     }
 }
@@ -239,11 +235,15 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::{generate_test_server_identity, verify_server_signature};
+    use crate::{
+        crypto::{generate_test_server_identity, verify_server_signature},
+        persistence::FileRepositories,
+    };
 
     fn temp_state() -> AppState {
         let temp_dir = std::env::temp_dir().join(format!("harstad-makers-test-{}", Uuid::new_v4()));
-        AppState::new(temp_dir, generate_test_server_identity()).unwrap()
+        let repositories = FileRepositories::new(temp_dir).unwrap();
+        AppState::new(generate_test_server_identity(), repositories).unwrap()
     }
 
     #[test]
