@@ -101,22 +101,61 @@ impl AppState {
         self.members.read().unwrap().clone()
     }
 
+    /// Reload members from the repository to pick up external changes
+    /// Merges changes from file into the in-memory cache without removing
+    /// members that only exist in memory (e.g., created during tests)
+    pub fn refresh_members(&self) -> Result<()> {
+        let file_members = self.member_repository.load_all().unwrap_or_else(|_| {
+            let demo = create_demo_member();
+            vec![demo]
+        });
+        
+        let mut members = self.members.write().unwrap();
+        
+        // Update existing members with data from file and add new ones
+        for file_member in file_members {
+            if let Some(existing) = members.iter_mut().find(|m| m.id == file_member.id) {
+                // Update existing member with file data
+                existing.active = file_member.active;
+                existing.is_debug = file_member.is_debug;
+                existing.name = file_member.name;
+                existing.email = file_member.email;
+                existing.public_key_pem = file_member.public_key_pem;
+                existing.created_at = file_member.created_at;
+                existing.last_used = file_member.last_used;
+            } else {
+                // Add new member from file
+                members.push(file_member);
+            }
+        }
+        
+        Ok(())
+    }
+
     pub fn approve_member_registration(
         &self,
         member_id: &str,
         _debug_member_id: &str,
     ) -> Result<Member> {
-        let mut members = self.members.write().unwrap();
-        let member = members
-            .iter_mut()
-            .find(|member| member.id == member_id)
-            .context("member not found")?;
+        let member = {
+            let mut members = self.members.write().unwrap();
+            let member = members
+                .iter_mut()
+                .find(|m| m.id == member_id)
+                .context("member not found")?;
 
-        member.active = true;
-        Ok(member.clone())
+            member.active = true;
+            member.clone()
+        };
+        
+        self.persist_members()?;
+        Ok(member)
     }
 
     pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
+        // Refresh members from file to pick up any manual changes
+        self.refresh_members()?;
+        
         let members = self.members.read().unwrap();
         let member = members
             .iter()
@@ -153,6 +192,9 @@ impl AppState {
     }
 
     pub fn unlock_door(&self, request: UnlockRequest) -> Result<UnlockResponse> {
+        // Refresh members from file to pick up any manual changes
+        self.refresh_members()?;
+        
         let member = {
             let members = self.members.read().unwrap();
             members
@@ -202,9 +244,10 @@ impl AppState {
             timestamp: Utc::now().to_rfc3339(),
         };
 
-        let mut events = self.events.write().unwrap();
-        events.push(event);
-        drop(events);
+        {
+            let mut events = self.events.write().unwrap();
+            events.push(event);
+        }
 
         self.persist_members()?;
         self.persist_events()?;
