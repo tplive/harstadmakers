@@ -5,7 +5,7 @@ Dette prosjektet er en lokal tilgangskontroll for å komme inn i våre lokaler. 
 Den endelige designen er bevisst enkel:
 
 - Medlemmer må registrere seg før de kan bruke tilgangskontrollen. Dette gjøres èn gang, men må gjentas hvis man bytter telefon eller rensker nettleseren på telefonen, da tilgangskoden lagres der. En bruker kan ha flere nettlesere godkjent. Feks en mobil og en på sin pc.
-- Vi har en liten datamaskin (RPI) på innsiden som styrer døren. Denne kjører også nettside og API for dørkontrollen.
+- Vi har en liten datamaskin (RPI) på innsiden som fysisk styrer dørlåsen. Denne kjører også nettside og API for dørkontrollen.
 - RPI holder en enkel nettside som gjøres tilgjengelig på det private Wi‑Fi-nettverket.
 - Medlemmer som vil inn, åpner nettstedet fra mobilen sin mens de er koblet til vår wifi, fra utsiden av døren.
 - Registreringen sørger for at RPI lagrer registrerte tilgangsnøkkel for medlemmer.
