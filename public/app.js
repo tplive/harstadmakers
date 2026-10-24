@@ -88,7 +88,7 @@ function updateCurrentMember(members = viewState.members) {
 
 function renderMode() {
   const storedMemberId = getStoredMemberId();
-  registeredMemberIdEl.textContent = storedMemberId || 'Ikke registrert enda';
+  registeredMemberIdEl.textContent = storedMemberId || translations.siteTitle;
 
   if (viewState.isDebug) {
     setHidden(debugSummaryEl, false);
@@ -108,7 +108,7 @@ function renderMode() {
   if (!viewState.isRegistered) {
     setHidden(registerPanelEl, false);
     setHidden(memberPanelEl, true);
-    memberPanelCopyEl.textContent = 'Nettleseren er registrert. Trykk for å starte hele opplåsingsflyten.';
+    memberPanelCopyEl.textContent = translations.memberPanelDescription;
     return;
   }
 
@@ -118,7 +118,7 @@ function renderMode() {
   if (viewState.currentMember && !viewState.currentMember.active) {
     memberPanelCopyEl.textContent = 'Nettleseren er registrert, men venter fortsatt på godkjenning før døra kan låses opp.';
   } else {
-    memberPanelCopyEl.textContent = 'Nettleseren er registrert. Trykk for å starte hele opplåsingsflyten.';
+    memberPanelCopyEl.textContent = translations.memberPanelDescription;
   }
 }
 
@@ -137,13 +137,13 @@ function renderMembers(members) {
   memberListEl.innerHTML = '';
 
   if (!Array.isArray(members) || members.length === 0) {
-    memberListEl.innerHTML = '<li>No members yet.</li>';
+    memberListEl.innerHTML = '<li>Ingen medlemmer enda.</li>';
     return;
   }
 
   members.forEach((member) => {
     const item = document.createElement('li');
-    const role = member.is_debug ? 'debug' : (member.active ? 'active' : 'pending');
+    const role = member.is_debug ? 'debug' : (member.active ? 'aktiv' : 'venter');
     item.textContent = `${member.name} · ${member.email} · ${role}`;
     memberListEl.appendChild(item);
   });
@@ -159,14 +159,14 @@ async function loadMembers({ silent = false } = {}) {
     renderMode();
 
     if (!silent && viewState.isDebug) {
-      setStatus(`Loaded ${members.length} member(s).`, 'success');
+      setStatus(`Lastet ${members.length} medlem(mer).`, 'success');
     }
   } catch (error) {
     updateCurrentMember([]);
     renderMode();
 
     if (!silent) {
-      setStatus(`Unable to reach the backend: ${error.message}`, 'error');
+      setStatus(`Kunne ikke koble til backend: ${error.message}`, 'error');
     }
   }
 }
@@ -178,7 +178,7 @@ async function registerMember() {
   const email = activeEmailField.value.trim();
 
   if (!name || !email) {
-    setStatus('Name and email are required to register the member.', 'error');
+    setStatus(translations.labelFullName + ' og ' + translations.labelEmail + ' må fylles ut for å registrere medlemmet.', 'error');
     return;
   }
 
@@ -202,7 +202,7 @@ async function registerMember() {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Registration failed.');
+      throw new Error(data.error || 'Registrering mislyktes.');
     }
 
     const verified = await verifyServerChallenge(
@@ -212,7 +212,7 @@ async function registerMember() {
     );
 
     if (!verified) {
-      throw new Error('The server identity check failed during registration.');
+      throw new Error('Server identitetssjekk mislyktes under registrering.');
     }
 
     await storeMemberPrivateKey(memberKeyPair.privateKey);
@@ -221,7 +221,7 @@ async function registerMember() {
     setMemberIdField(data.member.id);
     updateCurrentMember(viewState.members);
     renderMode();
-    setStatus(`Registered member ${data.member.id}. Browser and server identities are now paired.`, 'success');
+    setStatus(`Registrert medlem ${data.member.id}. Nettleser og server identiteter er nå koblet sammen.`, 'success');
     activeNameField.value = data.member.name || name;
     activeEmailField.value = data.member.email || email;
     challengeOutput.textContent = JSON.stringify(data, null, 2);
@@ -235,14 +235,14 @@ async function requestChallenge() {
   const memberId = memberIdField.value.trim();
 
   if (!memberId) {
-    setStatus('Member ID is required.', 'error');
+    setStatus(translations.labelMemberId + ' må fylles ut.', 'error');
     return;
   }
 
   try {
     const serverPublicKey = getStoredServerPublicKey();
     if (!serverPublicKey) {
-      throw new Error('No stored server public key found. Register this browser again first.');
+      throw new Error(translations.siteTitle + ': ' + 'Ingen lagret server nøkkel funnet. Registrer denne nettleseren på nytt først.');
     }
 
     const serverChallenge = createServerChallenge();
@@ -257,7 +257,7 @@ async function requestChallenge() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Challenge request failed.');
+      throw new Error(data.error || 'Challenge forespørsel mislyktes.');
     }
 
     const verified = await verifyServerChallenge(
@@ -267,7 +267,7 @@ async function requestChallenge() {
     );
 
     if (!verified) {
-      throw new Error('The server identity check failed for this unlock attempt.');
+      throw new Error('Server identitetssjekk mislyktes for dette opplåsingsforsøket.');
     }
 
     challengeIdField.value = data.challenge_id;
@@ -275,7 +275,7 @@ async function requestChallenge() {
 
     const decryptedNonce = await decryptChallengeNonce(data.encrypted_nonce);
     setChallengeDecryptedNonce(decryptedNonce);
-    setStatus('Challenge issued and decrypted with the stored browser key.', 'success');
+    setStatus('Challenge utstedt og dekryptert med den lagrede nettleser nøkkelen.', 'success');
   } catch (error) {
     setStatus(error.message, 'error');
   }
@@ -287,7 +287,7 @@ async function unlockDoor() {
   const decryptedNonce = decryptedNonceField.value.trim();
 
   if (!memberId || !challengeId || !decryptedNonce) {
-    setStatus('Member ID, challenge ID and decrypted nonce are required.', 'error');
+    setStatus(translations.labelMemberId + ', Challenge ID og ' + translations.labelDecryptedNonce + ' må fylles ut.', 'error');
     return;
   }
 
@@ -307,7 +307,7 @@ async function unlockDoor() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Door unlock request failed.');
+      throw new Error(data.error || 'Dør opplåsingsforespørsel mislyktes.');
     }
 
     setStatus(`${data.message}`, 'success');
@@ -335,7 +335,7 @@ async function unlockDoorFromStoredRegistration() {
     const challengeId = challengeIdField.value.trim();
     const decryptedNonce = decryptedNonceField.value.trim();
     if (!challengeId || !decryptedNonce) {
-      throw new Error('Challenge flow did not complete successfully.');
+      throw new Error('Challenge flyt ble ikke fullført.');
     }
 
     await unlockDoor();
@@ -351,7 +351,7 @@ function deleteBrowserRegistration() {
   setMemberIdField('');
   setChallengeDecryptedNonce('');
   challengeIdField.value = '';
-  challengeOutput.textContent = 'Ikke mottatt challenge enda.';
+  challengeOutput.textContent = translations.challengeNotReceived;
   updateCurrentMember(viewState.members);
   renderMode();
   setStatus('Nettleserregistreringen ble slettet lokalt. Ingen data ble fjernet fra backend.', 'success');

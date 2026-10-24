@@ -85,6 +85,8 @@ export async function getStoredPrivateKey() {
 export async function decryptChallengeNonce(base64Value) {
   const privateKey = await getStoredPrivateKey();
   if (!privateKey) {
+    // Note: This message will be caught and displayed in app.js
+    // Translation handled by app.js
     throw new Error('No member private key found in browser storage. Register a member first.');
   }
 
