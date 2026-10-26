@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harstad Makers</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>Harstad Makers</h1>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Tilgang Til Lokalene</p>
+          <h2>Dørtilgang</h2>
+          <p>Denne nettsiden brukes for å låse opp døra til Harstad Makers.</p>
+          
+          <div id="status-message" class="status-box neutral">Sjekker registreringsstatus...</div>
+        </div>
+      </section>
+
+      <section id="registration-panel" class="panel hidden">
+        <h3>Registrer denne nettleseren</h3>
+        <p class="panel-copy">Før du kan låse opp døra, må du registrere denne enheten. Denne registreringen gjelder kun for denne nettleseren.</p>
+        <div class="stack compact-stack">
+          <label>
+            <span>Fullt navn</span>
+            <input id="register-member-name" type="text" placeholder="Jane Maker" autocomplete="name" />
+          </label>
+          <label>
+            <span>E-post</span>
+            <input id="register-member-email" type="email" placeholder="jane@harstadmakers.no" autocomplete="email" />
+          </label>
+          <button id="register-browser" class="primary wide-button">Registrer denne nettleseren</button>
+        </div>
+      </section>
+
+      <section id="member-panel" class="panel hidden">
+        <h3>Klar til å låse opp</h3>
+        <p id="member-panel-copy" class="panel-copy">Nettleseren er registrert og klar til bruk.</p>
+        <div class="single-action-card">
+          <div>
+            <p class="card-label">Registrert som</p>
+            <p id="registered-member-id" class="member-id-value"></p>
+          </div>
+          <div class="button-stack">
+            <button id="unlock-door" class="primary wide-button">Lås opp døra</button>
+            <button id="delete-registration" class="subtle-button wide-button">Slett registrering</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

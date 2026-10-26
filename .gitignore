@@ -1,4 +1,4 @@
-backend/target/
-backend/*.db
-backend/data/
+ttl/backend/target/
+ttl/backend/*.db
+ttl/backend/data/
 .DS_Store
