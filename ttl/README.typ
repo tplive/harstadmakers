@@ -21,6 +21,51 @@
   fill: rgb("#0f172a"),
   lang: "no",
 )
+#show link: underline
+
+#set par(justify: true, leading: 0.75em)
+#set heading(numbering: none)
+#show heading.where(level: 1): it => block[
+  #text(size: 18pt, weight: "medium", fill: rgb("#0f172a"))[#it.body]
+  #v(0.55em)
+]
+#show heading.where(level: 2): it => block[
+  #text(size: 15pt, weight: "medium", fill: rgb("#1e293b"))[#it.body]
+  #v(0.4em)
+]
+#show heading.where(level: 3): it => block[
+  #text(size: 13pt, weight: "medium", fill: rgb("#334155"))[#it.body]
+  #v(0.3em)
+]
+#show heading.where(level: 4): it => block[
+  #text(size: 11pt, weight: "medium", fill: rgb("#475569"))[#it.body]
+  #v(0.25em)
+]
+#show heading.where(level: 5): it => block[
+  #text(size: 10pt, weight: "medium", fill: rgb("#475569"))[#it.body]
+  #v(0.2em)#import "@preview/merman:0.5.0": mermaid
+]
+#let codeblock(body) = block(
+  fill: rgb("#f8fafc"),
+  inset: 10pt,
+  radius: 4pt,
+  stroke: 0.5pt + rgb("#dfe7f1"),
+  width: 100%,
+)[
+  #text(font: "DejaVu Sans Mono", size: 9pt, fill: rgb("#0f172a"))[#body]
+]
+
+#set page(
+  paper: "a4",
+  margin: (left: 18mm, right: 18mm, top: 18mm, bottom: 18mm),
+  fill: rgb("#ffffff"),
+)
+#set text(
+  font: "DejaVu Sans",
+  size: 11pt,
+  fill: rgb("#0f172a"),
+  lang: "no",
+)
 #set par(justify: true, leading: 0.75em)
 #set heading(numbering: none)
 #show heading.where(level: 1): it => block[
@@ -53,13 +98,17 @@
   ]
 
   #text(size: 14pt, weight: "regular")[
-   (Tilgang Til Lokalene)]
+    (Tilgang Til Lokalene)]
 ]
 #v(1.2em)
 #line(length: 100%, stroke: 0.8pt + rgb("#dfe7f1"))
 #v(1.2em)
 
-Dette er en webapplikasjon som på fiffig vis lar brukerne låse opp døren til lokalet vårt. Løsningen er meget sikker, benytter public key kryptering og er ikke eksponert til Internett. Den som vil bryte seg inn hos oss må enten være en #emph[eksepsjonelt korttenkt, men begavet hacker]... eller en #emph[smarting med et brekkjern for hånden]... Get it? 😂
+#outline(title: [Innholdsfortegnelse])
+
+#pagebreak()
+= Introduksjon
+Dette er en webapplikasjon som på Fiffig Vis#emoji.tm lar brukerne låse opp døren til lokalet vårt. Løsningen er meget sikker, benytter public key kryptering og er ikke eksponert til Internett. Den som vil bryte seg inn hos oss må enten være en #emph[eksepsjonelt korttenkt, men begavet hacker]... eller en #emph[smarting med et brekkjern for hånden]... Get it? #emoji.face
 
 Lokal tilgangskontroll for å komme inn i våre lokaler. Tilgangskontrollen vil etter hvert bli koblet opp til medlemsregisteret, og kun medlemmer vil kunne få tilgang.
 
@@ -76,17 +125,17 @@ Designet er superenkelt for brukeren, og avansert nok til å være sikkert:
 ][
   Nettleser og server utveksler litt data, og nettleseren må bevise at den har rett tilgangsnøkkel ved å dekryptere en utfordring fra server.
 ][
-  Når nettleser svarer med korrekt dekryptert utfordring, låses døra opp! 🤩
+  Når nettleser svarer med korrekt dekryptert utfordring, låses døra opp! #emoji.face
 ]
 
 Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan du f.eks. lese mer om dette her: https://www.geeksforgeeks.org/computer-networks/public-key-encryption/
 
 = Hvilke hardware-komponenter inngår?
-
+#show link: underline
 #list(
-  [En fysisk dørlås (eng. "electric door strike") på ytterdøra som kan aktiveres med å gi den 12V spenning. [Feks en sånn](https://fyndiq.no/produkt/dc12v-elektrisk-las-for-port-elektrisk-dorapner-for-alle-typer-dorer-rustfritt-stal-98da778d3140538a/)],
-  [Et relè som lukker kretsen og gir dørlåsen spenning. [Feks et sånt](https://fyndiq.no/produkt/rele-srd-5vdc-sl-c-1-vekselkontakt-5v-dc-spole-10a-240vac-for-elektronikkprosjekter-5cf8b376f2994921/)],
-  [En Raspberry Pi (her omtalt som "serveren") som er ([Eksempel, vi har sånne fra før](https://cdon.no/produkt/raspberry-pi-3-model-b-enkortsdatamaskin-12-ghz-1-gb-ram-9a53d04f738d4a2a/))
+  [En fysisk dørlås (eng. "electric door strike") på ytterdøra som kan aktiveres med å gi den 12V spenning. #link("https://fyndiq.no/produkt/dc12v-elektrisk-las-for-port-elektrisk-dorapner-for-alle-typer-dorer-rustfritt-stal-98da778d3140538a/")[Feks en sånn]],
+  [Et relè som lukker kretsen og gir dørlåsen spenning. #link("https://fyndiq.no/produkt/rele-srd-5vdc-sl-c-1-vekselkontakt-5v-dc-spole-10a-240vac-for-elektronikkprosjekter-5cf8b376f2994921/")[Feks et sånt]],
+  [En server som er: (#link("https://cdon.no/produkt/raspberry-pi-3-model-b-enkortsdatamaskin-12-ghz-1-gb-ram-9a53d04f738d4a2a/")[Eksempel, vi har sånne fra før])
     #list(
       [fysisk plassert inne i lokalene],
       [fysisk koblet til dørlåsen via relèet],
@@ -95,7 +144,7 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
     )],
   [En gammel (pent brukt) PC strømforsyning som gir 5V til serveren og relèet, og 12V til dørlåsen. (Det har vi sikkert fra før)],
   [En UPS (Uninterruptable Power Supply) som holder server, wifi og dørlås operative selv om strømmen skulle gå. (Har kjøpt en brukt)],
-  [Internett-ruteren, som muliggjør nedlasting av sertifikater for serveren. Mer om det lenger ned. (har vi fra før)],
+  [Internett-ruteren, som muliggjør nedlasting av sertifikater for serveren. Mer om det lenger ned. (den har vi fra før)],
   [Den opprinnelige Yale dørlåsen på døra, som "master lock":
     #list(
       [#strong[fortsatt fullt fungerende]],
@@ -148,7 +197,8 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
 ]
 
 #figure(
-  mermaid("
+  mermaid(
+    "
   sequenceDiagram
      participant Bruker
      participant Nettleser
@@ -165,8 +215,9 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
      Server-->>Nettleser: Sender mottaksmelding og serverens offentlige nøkkel
      Nettleser->>Nettleser: Lagrer serverens offentlige nøkkel i local storage
      Nettleser-->>Bruker: Viser at registreringen er mottatt
-"),
-caption: [Registreringsflyt]
+",
+  ),
+  caption: [Registreringsflyt],
 )<figur1>
 
 == Aktivering
@@ -181,7 +232,8 @@ caption: [Registreringsflyt]
   Tilgangsansvarlig setter "active": "true" på registreringen. #strong[Kommer: et GUI for å administrere registreringene]
 ]
 
-#mermaid("
+#mermaid(
+  "
   sequenceDiagram
      participant Bruker
      participant Tilgangsansvarlig
@@ -200,7 +252,8 @@ caption: [Registreringsflyt]
      Server->>Medlemsdata: Lagrer aktiv registrering
      Medlemsdata-->>Server: Bekrefter oppdateringen
      Server-->>Tilgangsansvarlig: Bekrefter at brukeren er aktivert
-")
+",
+)
 
 == Opplåsing av døra
 
@@ -240,7 +293,8 @@ caption: [Registreringsflyt]
   Server aktiverer relèet som åpner dørlåsen i 5 sekunder (konfigurerbart).
 ]
 
-#mermaid("
+#mermaid(
+  "
   sequenceDiagram
      participant Bruker
      participant Nettleser
@@ -276,7 +330,8 @@ caption: [Registreringsflyt]
         Relè->>Dørlås: Gir dørlåsen spenning
         Dørlås-->>Bruker: Døren låses opp
      end
-")
+",
+)
 
 #super[1]: Dersom den ikke finnes har den kanskje aldri eksistert der, eller rydderutinen har slettet den. Uansett må bruker registrere seg på nytt.
 
@@ -371,55 +426,55 @@ Eksempel:
   \# Port 80 er kun åpent for ACME challenge.
   \# Ingen andre tjenester skal være publisert direkte mot Internett.
   server {
-      listen 80;
-      server_name ttl.harstadmakers.no;
+  listen 80;
+  server_name ttl.harstadmakers.no;
 
-      location /.well-known/acme-challenge/ {
-          root /var/www/letsencrypt;
-      }
+  location /.well-known/acme-challenge/ {
+  root /var/www/letsencrypt;
+  }
 
-      return 301 https://\$host\$request_uri;
+  return 301 https://\$host\$request_uri;
   }
 
   server {
-      listen 443 ssl;
-      server_name ttl.harstadmakers.no;
+  listen 443 ssl;
+  server_name ttl.harstadmakers.no;
 
-      ssl_certificate /etc/letsencrypt/live/ttl.harstadmakers.no/fullchain.pem;
-      ssl_certificate_key /etc/letsencrypt/live/ttl.harstadmakers.no/privkey.pem;
+  ssl_certificate /etc/letsencrypt/live/ttl.harstadmakers.no/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/ttl.harstadmakers.no/privkey.pem;
 
-      location / {
-          proxy_pass http://127.0.0.1:8088;
-          proxy_set_header Host \$host;
-          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https;
-      }
+  location / {
+  proxy_pass http://127.0.0.1:8088;
+  proxy_set_header Host \$host;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto https;
+  }
   }
 
   server {
-      listen 80;
-      server_name ttl-api.harstadmakers.no;
+  listen 80;
+  server_name ttl-api.harstadmakers.no;
 
-      location /.well-known/acme-challenge/ {
-          root /var/www/letsencrypt;
-      }
+  location /.well-known/acme-challenge/ {
+  root /var/www/letsencrypt;
+  }
 
-      return 301 https://\$host\$request_uri;
+  return 301 https://\$host\$request_uri;
   }
 
   server {
-      listen 443 ssl;
-      server_name ttl-api.harstadmakers.no;
+  listen 443 ssl;
+  server_name ttl-api.harstadmakers.no;
 
-      ssl_certificate /etc/letsencrypt/live/ttl-api.harstadmakers.no/fullchain.pem;
-      ssl_certificate_key /etc/letsencrypt/live/ttl-api.harstadmakers.no/privkey.pem;
+  ssl_certificate /etc/letsencrypt/live/ttl-api.harstadmakers.no/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/ttl-api.harstadmakers.no/privkey.pem;
 
-      location / {
-          proxy_pass http://127.0.0.1:3000;
-          proxy_set_header Host \$host;
-          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https;
-      }
+  location / {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_set_header Host \$host;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto https;
+  }
   }
 ]
 
