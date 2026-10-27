@@ -11,6 +11,7 @@ use crate::{
         create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
         ServerIdentity,
     },
+    door_lock::{DoorLock, MockDoorLock},
     models::{
         ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, Member, NewMemberRequest,
         RegistrationResponse, UnlockRequest, UnlockResponse,
@@ -26,6 +27,8 @@ pub struct AppState {
     server_identity: ServerIdentity,
     member_repository: Arc<dyn MemberRepository>,
     event_repository: Arc<dyn EventRepository>,
+    /// Door lock implementation - default is MockDoorLock for development
+    pub door_lock: Arc<dyn DoorLock>,
 }
 
 impl AppState {
@@ -52,6 +55,7 @@ impl AppState {
             server_identity,
             member_repository: Arc::new(repositories.members),
             event_repository: Arc::new(repositories.events),
+            door_lock: Arc::new(MockDoorLock::new()),
         };
 
         state.persist_members()?;
@@ -228,6 +232,9 @@ impl AppState {
         challenges.remove(&request.challenge_id);
         drop(challenges);
 
+        // Activate the door lock relay
+        let unlock_time = self.door_lock.unlock()?;
+
         {
             let mut members = self.members.write().unwrap();
             let member = members
@@ -241,7 +248,7 @@ impl AppState {
             id: Uuid::new_v4().to_string(),
             member_id: request.member_id.clone(),
             action: "unlock_door".to_string(),
-            timestamp: Utc::now().to_rfc3339(),
+            timestamp: unlock_time.to_rfc3339(),
         };
 
         {
@@ -255,9 +262,10 @@ impl AppState {
         Ok(UnlockResponse {
             approved: true,
             member_id: request.member_id,
-            message:
-                "Door unlock approved. The Raspberry Pi can relay the command to the lock actuator."
-                    .to_string(),
+            message: format!(
+                "Door unlock approved and relay activated at {}. The Raspberry Pi has relayed the command to the lock actuator.",
+                unlock_time.to_rfc3339()
+            ),
             action: "unlock_door".to_string(),
         })
     }
@@ -272,6 +280,11 @@ impl AppState {
         let events = self.events.read().unwrap();
         self.event_repository.save_all(&events)?;
         Ok(())
+    }
+
+    /// Get a reference to the door lock for testing purposes
+    pub fn door_lock(&self) -> Arc<dyn DoorLock> {
+        self.door_lock.clone()
     }
 }
 
@@ -463,5 +476,140 @@ mod tests {
         let members = state.members.read().unwrap();
         let saved = members.iter().find(|item| item.id == member.id).unwrap();
         assert!(saved.last_used.is_some());
+    }
+
+    #[test]
+    fn unlock_door_activates_door_lock() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "door-lock-test-member".to_string(),
+            name: "Door Lock Test".to_string(),
+            email: "doorlock@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: true,
+            is_debug: false,
+            created_at: Utc::now().to_rfc3339(),
+            last_used: None,
+        };
+
+        {
+            let mut members = state.members.write().unwrap();
+            members.push(member.clone());
+        }
+
+        let challenge_id = Uuid::new_v4().to_string();
+        let nonce = "door-lock-test-nonce".to_string();
+        {
+            let mut challenges = state.challenges.write().unwrap();
+            challenges.insert(
+                challenge_id.clone(),
+                ChallengeRecord {
+                    member_id: member.id.clone(),
+                    nonce: nonce.clone(),
+                    expires_at: (Utc::now() + chrono::Duration::minutes(5)).timestamp(),
+                },
+            );
+        }
+
+        // Note: MockDoorLock is used by default, so we can clear through state if needed
+        // For this test, we'll work with fresh state so no clearing needed
+
+        let before_unlock = Utc::now();
+        let response = state
+            .unlock_door(UnlockRequest {
+                member_id: member.id.clone(),
+                challenge_id,
+                server_nonce_signature: {
+                    base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        member_key.sign(nonce.as_bytes()).to_bytes(),
+                    )
+                },
+            })
+            .unwrap();
+        let after_unlock = Utc::now();
+
+        assert!(response.approved);
+        
+        // Verify the door lock was activated
+        let door_lock = state.door_lock();
+        assert!(door_lock.last_unlock_time().is_some());
+        
+        let unlock_time = door_lock.last_unlock_time().unwrap();
+        assert!(unlock_time >= before_unlock && unlock_time <= after_unlock);
+        
+        // Verify it was unlocked within the correct timeframe
+        assert!(door_lock.was_unlocked_between(before_unlock, after_unlock));
+    }
+
+    #[test]
+    fn door_lock_mock_verifies_time_window() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "time-window-test-member".to_string(),
+            name: "Time Window Test".to_string(),
+            email: "timewindow@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: true,
+            is_debug: false,
+            created_at: Utc::now().to_rfc3339(),
+            last_used: None,
+        };
+
+        {
+            let mut members = state.members.write().unwrap();
+            members.push(member.clone());
+        }
+
+        let challenge_id = Uuid::new_v4().to_string();
+        let nonce = "time-window-test-nonce".to_string();
+        {
+            let mut challenges = state.challenges.write().unwrap();
+            challenges.insert(
+                challenge_id.clone(),
+                ChallengeRecord {
+                    member_id: member.id.clone(),
+                    nonce: nonce.clone(),
+                    expires_at: (Utc::now() + chrono::Duration::minutes(5)).timestamp(),
+                },
+            );
+        }
+
+        let window_start = Utc::now();
+        
+        let response = state
+            .unlock_door(UnlockRequest {
+                member_id: member.id.clone(),
+                challenge_id,
+                server_nonce_signature: {
+                    base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        member_key.sign(nonce.as_bytes()).to_bytes(),
+                    )
+                },
+            })
+            .unwrap();
+
+        let window_end = Utc::now();
+
+        assert!(response.approved);
+        
+        // Verify the door lock was activated within the time window
+        let door_lock = state.door_lock();
+        assert!(door_lock.was_unlocked_between(window_start, window_end));
+        
+        // Verify it was NOT unlocked before the window
+        assert!(!door_lock.was_unlocked_between(
+            window_start - chrono::Duration::minutes(10),
+            window_start
+        ));
+        
+        // Verify it was NOT unlocked after the window
+        assert!(!door_lock.was_unlocked_between(
+            window_end,
+            window_end + chrono::Duration::minutes(10)
+        ));
     }
 }

@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tokio::net::TcpListener;
 mod crypto;
+mod door_lock;
 mod models;
 mod persistence;
 mod state;
