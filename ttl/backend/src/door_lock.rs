@@ -22,7 +22,7 @@ pub trait DoorLock: Send + Sync {
 }
 
 /// Mock door lock implementation for testing and development
-/// 
+///
 /// This mock tracks when unlock was called and can verify that
 /// an approved unlocking activates the door lock within the correct timeframe.
 #[derive(Debug, Clone)]
@@ -75,7 +75,7 @@ impl DoorLock for MockDoorLock {
 }
 
 /// Hardware door lock implementation using GPIO relay
-/// 
+///
 /// This would be the production implementation that controls
 /// the actual relay hardware connected to the door lock.
 /// Currently a placeholder - to be implemented when hardware is ready.
@@ -106,7 +106,6 @@ impl DoorLock for HardwareDoorLock {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,11 +113,11 @@ mod tests {
     #[test]
     fn mock_door_lock_records_unlock() {
         let mock = MockDoorLock::new();
-        
+
         let before = Utc::now();
         let result = mock.unlock().unwrap();
         let after = Utc::now();
-        
+
         assert!(result >= before && result <= after);
         assert_eq!(mock.unlock_timestamps().len(), 1);
         assert_eq!(mock.last_unlock_time(), Some(result));
@@ -127,21 +126,21 @@ mod tests {
     #[test]
     fn mock_door_lock_tracks_multiple_unlocks() {
         let mock = MockDoorLock::new();
-        
+
         mock.unlock().unwrap();
         mock.unlock().unwrap();
         mock.unlock().unwrap();
-        
+
         assert_eq!(mock.unlock_timestamps().len(), 3);
     }
 
     #[test]
     fn mock_door_lock_clear() {
         let mock = MockDoorLock::new();
-        
+
         mock.unlock().unwrap();
         assert_eq!(mock.unlock_timestamps().len(), 1);
-        
+
         mock.clear();
         assert_eq!(mock.unlock_timestamps().len(), 0);
     }
@@ -149,24 +148,22 @@ mod tests {
     #[test]
     fn mock_door_lock_was_unlocked_between() {
         let mock = MockDoorLock::new();
-        
+
         let start = Utc::now();
         std::thread::sleep(std::time::Duration::from_millis(10));
         mock.unlock().unwrap();
         std::thread::sleep(std::time::Duration::from_millis(10));
         let end = Utc::now();
-        
+
         assert!(mock.was_unlocked_between(start, end));
         assert!(!mock.was_unlocked_between(end, end + chrono::Duration::seconds(1)));
     }
-
-
 
     #[test]
     fn hardware_door_lock_unlock() {
         let hw = HardwareDoorLock;
         let result = hw.unlock().unwrap();
-        
+
         let now = Utc::now();
         assert!(result >= (now - chrono::Duration::seconds(1)) && result <= now);
     }

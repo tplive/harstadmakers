@@ -100,25 +100,22 @@ mod tests {
     fn test_member_repository_roundtrip() {
         let temp_dir = env::temp_dir().join(format!("test-members-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
-        
+
         let repo = JsonFileMemberRepository::new(temp_dir.join("members.json"));
-        
-        let members = vec![
-            Member {
-                id: "test-1".to_string(),
-                name: "Test Member".to_string(),
-                email: "test@harstadmakers.no".to_string(),
-                public_key_pem: create_demo_member().public_key_pem,
-                active: true,
-                is_debug: false,
-                created_at: "2026-01-01T00:00:00Z".to_string(),
-                last_used: None,
-            }
-        ];
-        
+
+        let members = vec![Member {
+            id: "test-1".to_string(),
+            name: "Test Member".to_string(),
+            email: "test@harstadmakers.no".to_string(),
+            public_key_pem: create_demo_member().public_key_pem,
+            active: true,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            last_used: None,
+        }];
+
         repo.save_all(&members).unwrap();
         let loaded = repo.load_all().unwrap();
-        
+
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, "test-1");
     }
@@ -127,21 +124,19 @@ mod tests {
     fn test_event_repository_roundtrip() {
         let temp_dir = env::temp_dir().join(format!("test-events-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
-        
+
         let repo = JsonFileEventRepository::new(temp_dir.join("events.json"));
-        
-        let events = vec![
-            DoorEvent {
-                id: "event-1".to_string(),
-                member_id: "member-1".to_string(),
-                action: "unlock_door".to_string(),
-                timestamp: "2026-01-01T00:00:00Z".to_string(),
-            }
-        ];
-        
+
+        let events = vec![DoorEvent {
+            id: "event-1".to_string(),
+            member_id: "member-1".to_string(),
+            action: "unlock_door".to_string(),
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+        }];
+
         repo.save_all(&events).unwrap();
         let loaded = repo.load_all().unwrap();
-        
+
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, "event-1");
     }
