@@ -74,7 +74,6 @@ impl AppState {
             email: payload.email,
             public_key_pem,
             active: false,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -113,7 +112,6 @@ impl AppState {
             if let Some(existing) = members.iter_mut().find(|m| m.id == file_member.id) {
                 // Update existing member with file data
                 existing.active = file_member.active;
-                existing.is_debug = file_member.is_debug;
                 existing.name = file_member.name;
                 existing.email = file_member.email;
                 existing.public_key_pem = file_member.public_key_pem;
@@ -126,26 +124,6 @@ impl AppState {
         }
 
         Ok(())
-    }
-
-    pub fn approve_member_registration(
-        &self,
-        member_id: &str,
-        _debug_member_id: &str,
-    ) -> Result<Member> {
-        let member = {
-            let mut members = self.members.write().unwrap();
-            let member = members
-                .iter_mut()
-                .find(|m| m.id == member_id)
-                .context("member not found")?;
-
-            member.active = true;
-            member.clone()
-        };
-
-        self.persist_members()?;
-        Ok(member)
     }
 
     pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
@@ -291,13 +269,13 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::Signer;
     use crate::{
         crypto::{
             generate_test_member_key, generate_test_server_identity, verify_server_signature,
         },
         persistence::FileRepositories,
     };
+    use ed25519_dalek::Signer;
 
     fn temp_state() -> AppState {
         let temp_dir = std::env::temp_dir().join(format!("harstad-makers-test-{}", Uuid::new_v4()));
@@ -309,12 +287,11 @@ mod tests {
     fn demo_member_data_bootstraps() {
         let member = create_demo_member();
         assert!(member.public_key_pem.starts_with("ssh-ed25519 "));
-        assert!(member.is_debug);
         assert!(member.active);
     }
 
     #[test]
-    fn active_member_can_be_activated_without_debug_gating() {
+    fn active_member_can_be_activated_manually() {
         let state = temp_state();
 
         let member = Member {
@@ -323,7 +300,6 @@ mod tests {
             email: "pending@harstadmakers.no".to_string(),
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -333,9 +309,15 @@ mod tests {
             members.push(member.clone());
         }
 
-        assert!(state
-            .approve_member_registration(&member.id, "ignored-debug")
-            .is_ok());
+        // Manually activate member (simulating manual edit of members.json)
+        {
+            let mut members = state.members.write().unwrap();
+            let saved = members
+                .iter_mut()
+                .find(|item| item.id == member.id)
+                .unwrap();
+            saved.active = true;
+        }
 
         {
             let members = state.members.read().unwrap();
@@ -355,7 +337,6 @@ mod tests {
             email: "inactive@harstadmakers.no".to_string(),
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -434,7 +415,6 @@ mod tests {
             email: "active@harstadmakers.no".to_string(),
             public_key_pem: member_public_key,
             active: true,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -488,7 +468,6 @@ mod tests {
             email: "doorlock@harstadmakers.no".to_string(),
             public_key_pem: member_public_key,
             active: true,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -531,14 +510,14 @@ mod tests {
         let after_unlock = Utc::now();
 
         assert!(response.approved);
-        
+
         // Verify the door lock was activated
         let door_lock = state.door_lock();
         assert!(door_lock.last_unlock_time().is_some());
-        
+
         let unlock_time = door_lock.last_unlock_time().unwrap();
         assert!(unlock_time >= before_unlock && unlock_time <= after_unlock);
-        
+
         // Verify it was unlocked within the correct timeframe
         assert!(door_lock.was_unlocked_between(before_unlock, after_unlock));
     }
@@ -553,7 +532,6 @@ mod tests {
             email: "timewindow@harstadmakers.no".to_string(),
             public_key_pem: member_public_key,
             active: true,
-            is_debug: false,
             created_at: Utc::now().to_rfc3339(),
             last_used: None,
         };
@@ -578,7 +556,7 @@ mod tests {
         }
 
         let window_start = Utc::now();
-        
+
         let response = state
             .unlock_door(UnlockRequest {
                 member_id: member.id.clone(),
@@ -595,21 +573,18 @@ mod tests {
         let window_end = Utc::now();
 
         assert!(response.approved);
-        
+
         // Verify the door lock was activated within the time window
         let door_lock = state.door_lock();
         assert!(door_lock.was_unlocked_between(window_start, window_end));
-        
+
         // Verify it was NOT unlocked before the window
-        assert!(!door_lock.was_unlocked_between(
-            window_start - chrono::Duration::minutes(10),
-            window_start
-        ));
-        
+        assert!(!door_lock
+            .was_unlocked_between(window_start - chrono::Duration::minutes(10), window_start));
+
         // Verify it was NOT unlocked after the window
-        assert!(!door_lock.was_unlocked_between(
-            window_end,
-            window_end + chrono::Duration::minutes(10)
-        ));
+        assert!(
+            !door_lock.was_unlocked_between(window_end, window_end + chrono::Duration::minutes(10))
+        );
     }
 }

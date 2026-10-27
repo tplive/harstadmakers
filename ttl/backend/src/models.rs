@@ -8,8 +8,6 @@ pub struct Member {
     pub public_key_pem: String,
     #[serde(default)]
     pub active: bool,
-    #[serde(default)]
-    pub is_debug: bool,
     pub created_at: String,
     #[serde(default)]
     pub last_used: Option<String>,
@@ -39,11 +37,6 @@ pub struct NewMemberRequest {
     #[serde(default)]
     pub public_key_jwk: Option<serde_json::Value>,
     pub server_challenge: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ApproveMemberRequest {
-    pub debug_member_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

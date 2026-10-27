@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::{Method, StatusCode},
     response::IntoResponse,
     routing::{get, post},
@@ -8,7 +8,7 @@ use axum::{
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
-    models::{ApproveMemberRequest, ChallengeRequest, NewMemberRequest, UnlockRequest},
+    models::{ChallengeRequest, NewMemberRequest, UnlockRequest},
     state::AppState,
 };
 
@@ -23,10 +23,6 @@ pub fn app_router(state: AppState) -> Router {
         .route(
             "/api/members",
             get(list_members_handler).post(create_member_handler),
-        )
-        .route(
-            "/api/members/:member_id/approve",
-            post(approve_member_handler),
         )
         .route("/api/challenge", post(challenge_handler))
         .route("/api/door/unlock", post(unlock_handler))
@@ -56,20 +52,6 @@ async fn create_member_handler(
         ),
         Err(error) => (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": error.to_string() })),
-        ),
-    }
-}
-
-async fn approve_member_handler(
-    State(state): State<AppState>,
-    Path(member_id): Path<String>,
-    Json(payload): Json<ApproveMemberRequest>,
-) -> impl IntoResponse {
-    match state.approve_member_registration(&member_id, &payload.debug_member_id) {
-        Ok(member) => (StatusCode::OK, Json(serde_json::to_value(member).unwrap())),
-        Err(error) => (
-            StatusCode::FORBIDDEN,
             Json(serde_json::json!({ "error": error.to_string() })),
         ),
     }
