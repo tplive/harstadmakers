@@ -18,16 +18,16 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
 
 ## Hvilke hardware-komponenter inngår?
 
-- En fysisk dørlås (eng. "electric door strike") på ytterdøra som kan aktiveres med å gi den 12V spenning.
-- Et relè som lukker kretsen og gir dørlåsen spenning.
-- En Raspberry Pi (her omtalt som "serveren") som er 
+- En fysisk dørlås (eng. "electric door strike") på ytterdøra som kan aktiveres med å gi den 12V spenning. [Feks en sånn](https://fyndiq.no/produkt/dc12v-elektrisk-las-for-port-elektrisk-dorapner-for-alle-typer-dorer-rustfritt-stal-98da778d3140538a/)
+- Et relè som lukker kretsen og gir dørlåsen spenning. [Feks et sånt](https://fyndiq.no/produkt/rele-srd-5vdc-sl-c-1-vekselkontakt-5v-dc-spole-10a-240vac-for-elektronikkprosjekter-5cf8b376f2994921/)
+- En Raspberry Pi (her omtalt som "serveren") som er ([Eksempel, vi har sånne fra før](https://cdon.no/produkt/raspberry-pi-3-model-b-enkortsdatamaskin-12-ghz-1-gb-ram-9a53d04f738d4a2a/))
   - fysisk plassert inne i lokalene
-  - fysisk koblet til dørlåsen via et relè
+  - fysisk koblet til dørlåsen via relèet
   - fysisk koblet til relèet via en GPIO-pinne
   - når korrekt opplåsing skjer, lukker den relèet ved å gi det 5V spenning, som aktiverer dørlåsen.
-- En gammel (pent brukt) PC strømforsyning som gir 5V til serveren og relèet, og 12V til dørlåsen.
-- En UPS (Uninterruptable Power Supply) som holder server, wifi og dørlås operative selv om strømmen skulle gå.
-- Internett-ruteren, som muliggjør nedlasting av sertifikater for serveren. Mer om det lenger ned.
+- En gammel (pent brukt) PC strømforsyning som gir 5V til serveren og relèet, og 12V til dørlåsen. (Det har vi sikkert fra før)
+- En UPS (Uninterruptable Power Supply) som holder server, wifi og dørlås operative selv om strømmen skulle gå. (Har kjøpt en brukt)
+- Internett-ruteren, som muliggjør nedlasting av sertifikater for serveren. Mer om det lenger ned. (har vi fra før)
 - Den opprinnelige Yale dørlåsen på døra, som "master lock":
   - **fortsatt fullt fungerende**
   - **helt uavhengig av denne løsningen**
