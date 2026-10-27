@@ -10,7 +10,7 @@
 - [ ] Sikre at serveren genererer en ny, engangs challenge for hvert opplåsingsforsøk.
 - [ ] Avvise gjenbruk av en challenge etter en vellykket opplåsing.
 - [ ] Verifisere challenge- og nonce-reglene med automatiserte tester.
-- [ ] Implementere relé- og dørlåsmodulen.
+- [x] Implementere relé- og dørlåsmodulen.
   - Bruk en mock av relé og dørlås inntil fysisk maskinvareintegrasjon er klar.
   - Mocken skal kunne brukes til å verifisere at en godkjent opplåsing aktiverer dørlåsen i riktig tidsrom.
 - [ ] Fjerne `debug_member_id` fullstendig.
@@ -19,6 +19,7 @@
   - Aktivering skal fortsatt gjøres manuelt ved redigering av `backend/data/members.json`.
   - Tilgangsansvarlig logger inn på serveren via SSH, utenfor tilgangskontrollsystemet.
   - Tilgangsansvarlig kontrollerer siste siffer i UUID manuelt sammen med brukeren før `active` settes til `true`.
+- [ ] Fjern oppretting "demo_member" i databasen. Makes no sense, siden ingen nettleser matcher.
 - [ ] Forbedre nettverksbinding og tilgangsbegrensning før produksjonssetting.
   - `0.0.0.0:3000` er akseptabelt under utvikling, men må begrenses eller sikres i produksjon.
   - Vurder også CORS-konfigurasjonen før produksjonssetting.
@@ -27,6 +28,8 @@
 - [ ] Fjerne wildcard CORS og tillate bare nødvendige origins dersom nettlesertilgang beholdes.
 - [ ] Vurdere direkte app-til-server-trafikk fremfor generell nettlesertilgang.
 - [ ] Legge til ratebegrensning for registrering, challenge-forespørsler og opplåsing.
+- [ ] Bygge applikasjonen for Raspberry Pi.
+- [ ] En Hall-sensor på døren kobles til en GPIO pinne på Rasberry Pi. Den trigger når døren er åpen og lukket, slik at vi kan lukke låsen når døren går igjen. Og, vi kan merke om døren åpnes uten at dørlåsen er trigget.
 
 ## Autentisering og autorisasjon
 
