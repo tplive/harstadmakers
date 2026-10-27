@@ -1,6 +1,6 @@
 # Harstad Makers TTL (Tilgang Til Lokalene)
 
-Dette er en webapplikasjon som på fiffig vis lar brukerne låse opp døren til lokalet vårt. Løsningen er meget sikker, benytter public key kryptering og er ikke eksponert til Internett. Den som vil bryte seg inn hos oss må enten være en _eksepsjonelt korttenkt, men begavet hacker_... eller en _smarting med et brekkjern for hånden_... Get it? 😂
+Dette er en webapplikasjon som på fiffig vis lar brukerne låse opp døren til lokalet vårt. Løsningen benytter public key-signaturer og er ikke eksponert til Internett. Den som vil bryte seg inn hos oss må enten være en _eksepsjonelt korttenkt, men begavet hacker_... eller en _smarting med et brekkjern for hånden_... Get it? 😂
 
 Lokal tilgangskontroll for å komme inn i våre lokaler. Tilgangskontrollen vil etter hvert bli koblet opp til medlemsregisteret, og kun medlemmer vil kunne få tilgang.
 
@@ -14,7 +14,7 @@ Designet er superenkelt for brukeren, og avansert nok til å være sikkert:
 1. Nettleser og server utveksler litt data, og nettleseren må bevise at den har rett tilgangsnøkkel ved å dekryptere en utfordring fra server.
 1. Når nettleser svarer med korrekt dekryptert utfordring, låses døra opp! 🤩
 
-Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan du f.eks. lese mer om dette her: <https://www.geeksforgeeks.org/computer-networks/public-key-encryption/>
+Teknologien som brukes er public key-kryptografi med Ed25519-signaturer.
 
 ## Hvilke hardware-komponenter inngår?
 
@@ -61,7 +61,7 @@ Aktører:
   1. Brukeren taster inn navn og epost og trykker på "Registrering". Dette genererer en public/private nøkkelpar og en UUID.
   1. Privat nøkkel og UUID lagres i nettleserens local storage.
   1. Navn, epost, offentlig nøkkel og UUID sendes til serveren.
-  1. Server svarer med mottaksmelding og sin public key som også lagres i nettleserens local storage.
+  1. Server svarer med mottaksmelding og sin signeringsnøkkel. Nettleseren lagrer nøkkelen i local storage.
 
 ```mermaid
 sequenceDiagram
@@ -116,18 +116,17 @@ sequenceDiagram
   1. Brukeren kobler til trådløsnettet og åpner nettsiden.
   1. Nettleseren sjekker local storage og finner at den er registrert.
   1. Nettleseren henter brukerens private nøkkel og UUID fra local storage.
-  1. Nettleseren genererer en client-nonce som den krypterer med serverens public key og sender denne sammen med UUID til serveren og ber om en `registration-challenge`.
+  1. Nettleseren genererer en client-nonce, signerer den med sin Ed25519-private nøkkel og sender nonce, signatur og UUID til serveren.
   1. Server sjekker om tilsendt UUID finnes i databasen.
   1. Dersom den ikke finnes<sup>1</sup>,
-     - serveren dekrypterer client-nonce og returnerer den som bevis på at den er riktig server.
+     - verifiserer serveren client-nonce-signaturen og returnerer client-nonce som bekreftelse på at den er riktig server.
      - serveren gir beskjed til nettleseren om at brukeren må registrere seg.
      - nettleseren viser brukeren en knapp for "Slett registrering", som vil fjerne alle relevante verdier fra local storage i nettleseren og nullstille nettleseren.
   1. Dersom den finnes,
-     - serveren dekrypterer client-nonce og returnerer den som bevis på at den er riktig server.
-     - genererer serveren en server-nonce som den krypterer med brukerens registrerte public key og
-     - sender kryptert server-nonce til nettleser som challenge.
-  1. Nettleseren dekrypterer server-nonce med brukerens private nøkkel og sender dekryptert verdi tilbake til server som bevis på at den er den riktige nettleseren.
-  1. Serveren validerer dekryptert server-nonce og gir melding tilbake til nettleseren om at brukeren er klarert for å låse opp døra.
+    - verifiserer serveren client-nonce-signaturen og returnerer client-nonce som bekreftelse på at den er riktig server.
+    - genererer serveren en server-nonce og sender den til nettleseren som challenge.
+  1. Nettleseren signerer server-nonce med sin private nøkkel og sender signaturen tilbake til serveren.
+  1. Serveren validerer signaturen og gir melding tilbake til nettleseren om at brukeren er klarert for å låse opp døra.
   1. Brukeren ser nå en "Lås opp døra" knapp i nettleseren.
   1. Når bruker trykker på "Lås opp døra", gjentas stegene over for ny validering, men denne gang som en `unlock-challenge`.
   1. Server aktiverer relèet som åpner dørlåsen i 5 sekunder (konfigurerbart).
@@ -143,23 +142,23 @@ sequenceDiagram
 
    Bruker->>Nettleser: Kobler til trådløsnettet og åpner nettsiden
    Nettleser->>Nettleser: Henter privat nøkkel og UUID fra local storage
-   Nettleser->>Nettleser: Genererer og krypterer client-nonce
-   Nettleser->>Server: Sender UUID og kryptert client-nonce
+   Nettleser->>Nettleser: Genererer og signerer client-nonce
+   Nettleser->>Server: Sender UUID, client-nonce og signatur
    Server->>Medlemsdata: Sjekker om UUID finnes
    Medlemsdata-->>Server: Returnerer registreringen
 
    alt UUID finnes ikke
-      Server->>Server: Dekrypterer client-nonce
+      Server->>Server: Verifiserer client-nonce-signatur
       Server-->>Nettleser: Ber brukeren registrere seg på nytt
       Nettleser-->>Bruker: Viser «Slett registrering»
    else UUID finnes
-      Server->>Server: Dekrypterer client-nonce
+      Server->>Server: Verifiserer client-nonce-signatur
       Server->>Server: Genererer server-nonce
       Server->>Server: Krypterer server-nonce med brukerens offentlige nøkkel
-      Server-->>Nettleser: Sender kryptert server-nonce som challenge
-      Nettleser->>Nettleser: Dekrypterer server-nonce med privat nøkkel
-      Nettleser->>Server: Sender dekryptert server-nonce
-      Server->>Server: Validerer server-nonce
+      Server-->>Nettleser: Sender server-nonce som challenge
+      Nettleser->>Nettleser: Signerer server-nonce med privat nøkkel
+      Nettleser->>Server: Sender server-nonce-signatur
+      Server->>Server: Validerer server-nonce-signatur
       Server-->>Nettleser: Bekrefter at brukeren er klarert
       Nettleser-->>Bruker: Viser «Lås opp døra»
       Bruker->>Nettleser: Trykker «Lås opp døra»
@@ -180,8 +179,8 @@ Noen nøkkelpunkter som gjør løsningen svært sikker og robust:
 - Server genererer og lagrer sin egen private nøkkel, som aldri forlater serveren.
 - Nettleser representerer sin identitet med å sende over sin offentlige nøkkel til serveren ved registrering.
 - Server representerer sin identitet med å sende over sin offentlige nøkkel til nettleseren ved registrering.
-- Nettleser lagrer ikke selv sin offentlige nøkkel, men kan bevise sin identitet ved å dekryptere nonce sendt fra server.
-- Server kan bevise sin identitet ved å dekryptere nonce sendt fra nettleser.
+- Nettleseren lagrer sin private nøkkel og kan bevise sin identitet ved å signere nonce.
+- Serveren kan bevise sin identitet ved å signere server-challengen med sin private nøkkel.
 - Trafikk mellom nettleser på mobil og server er kryptert over HTTPS.
 - Løsningen er ikke eksponert på Internett, brukeren må være tilknyttet lokalnettverket.
 - Etter registrering må en administrator flagge registreringen som aktiv før brukeren kan låse opp døren.
@@ -199,9 +198,9 @@ I teorien kan en angriper (MiTM) sende over javascript som forbigår server-sjek
 
 ### API
 
-Ved forespørsel fra nettleser genererer backend en nonce og krypterer den med medlemmets offentlige nøkkel. Den sender kryptert nonce til klienten. Nettleseren  dekrypterer nonce med den private nøkkelen og sender klarteksten tilbake for verifisering. Når klarteksten matcher lagret nonce, godkjenner backend døråpning. Brukeren ber nå om å få åpnet døren, og dette trigger dørlåsen.
+Ved forespørsel fra nettleser genererer backend en nonce og sender den til klienten. Nettleseren signerer nonce-en med sin private Ed25519-nøkkel. Når signaturen matcher den registrerte offentlige nøkkelen, godkjenner backend døråpning.
 
-Backend har en forhåndsgenerert Ed25519 SSH-nøkkel i `~/.ssh/id_ed25519` og en offentlig nøkkel i `~/.ssh/id_ed25519.pub`. Den offentlige
+Backend har en forhåndsgenerert Ed25519 SSH-nøkkel i `~/.ssh/id_ed25519` og en offentlig nøkkel i `~/.ssh/id_ed25519.pub`.
 
 - Certbot obtains and renews the TLS certificate for the RPI hostname.
 - The mobile browser trusts the RPI certificate through its built-in trusted Certificate Authorities.

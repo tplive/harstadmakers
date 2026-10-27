@@ -45,7 +45,7 @@ Be om en challenge:
 ```bash
 curl -X POST http://localhost:3000/api/challenge \
   -H 'Content-Type: application/json' \
-  -d '{"member_id":"demo-member","server_challenge":"<browser-generated-nonce>"}'
+  -d '{"member_id":"demo-member","server_challenge":"<browser-generated-nonce>","client_nonce":"<client-nonce>","client_nonce_signature":"<Ed25519-signature>"}'
 ```
 
 Registrer en nettleser og lær serverens offentlige nøkkel:
@@ -56,12 +56,18 @@ curl -X POST http://localhost:3000/api/members \
   -d '{
     "name":"Jane Maker",
     "email":"jane@harstadmakers.no",
-    "public_key_jwk": {"kty":"RSA","n":"<modulus>","e":"AQAB"},
+    "public_key_jwk": {"kty":"OKP","crv":"Ed25519","x":"<public-key-bytes>"},
     "server_challenge":"<browser-generated-nonce>"
   }'
 ```
 
-Lås opp døren etter at mobilnettleseren har verifisert server-signaturen og dekryptert utfordringen:
+The browser signs a fresh client nonce with its Ed25519 private key for every
+challenge request. The backend verifies `client_nonce_signature` against the
+registered public key and returns the client nonce in `client_nonce`. The
+browser also signs the returned `server_nonce`; that signature is sent to the
+unlock endpoint as `server_nonce_signature`.
+
+Lås opp døren etter at mobilnettleseren har verifisert server-signaturen og signert server-nonce:
 
 ```bash
 curl -X POST http://localhost:3000/api/door/unlock \
@@ -69,6 +75,6 @@ curl -X POST http://localhost:3000/api/door/unlock \
   -d '{
     "member_id":"demo-member",
     "challenge_id":"<challenge-id>",
-    "decrypted_nonce":"<decrypted-nonce>"
+    "server_nonce_signature":"<Ed25519-signature>"
   }'
 ```

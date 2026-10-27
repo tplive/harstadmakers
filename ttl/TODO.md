@@ -2,10 +2,10 @@
 
 ## Tilgangskontroll
 
-- [ ] Implementere client-nonce-flyten som er beskrevet i `README.md`.
+- [x] Implementere client-nonce-flyten som er beskrevet i `README.md`.
   - Nettleseren skal generere en client-nonce.
-  - Client-nonce skal krypteres med serverens offentlige nøkkel.
-  - Serveren skal dekryptere og returnere client-nonce som bevis på riktig server.
+  - Nettleseren skal signere client-nonce med sin Ed25519-private nøkkel.
+  - Serveren skal verifisere signaturen med registrert offentlig nøkkel.
 - [ ] Implementere utløp og kontroll av challenge etter fem minutter.
 - [ ] Sikre at serveren genererer en ny, engangs challenge for hvert opplåsingsforsøk.
 - [ ] Avvise gjenbruk av en challenge etter en vellykket opplåsing.
@@ -14,6 +14,7 @@
   - Bruk en mock av relé og dørlås inntil fysisk maskinvareintegrasjon er klar.
   - Mocken skal kunne brukes til å verifisere at en godkjent opplåsing aktiverer dørlåsen i riktig tidsrom.
 - [ ] Fjerne `debug_member_id` fullstendig.
+- [ ] Fjerne `is_debug` feltet fra lagrede metadata.
 - [ ] Fjerne API-endepunktet for å godkjenne medlemmer.
   - Aktivering skal fortsatt gjøres manuelt ved redigering av `backend/data/members.json`.
   - Tilgangsansvarlig logger inn på serveren via SSH, utenfor tilgangskontrollsystemet.
@@ -72,7 +73,7 @@
 ## Testing
 
 - [ ] Gjøre frontendtestene kjørbare i utviklingsmiljøet.
-  - `public/demo-crypto.test.mjs` skal kunne kjøres med Node.js.
+  - `public/ttl-crypto.test.mjs` skal kunne kjøres med Node.js.
   - Dokumenter eventuell nødvendig Node.js-versjon og testkommando.
 - [ ] Utvide testene for client-nonce-flyten.
 - [ ] Utvide testene for challenge-utløp.
