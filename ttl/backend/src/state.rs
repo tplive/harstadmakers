@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
-use rsa::{pkcs1::DecodeRsaPublicKey, RsaPublicKey};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -9,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     crypto::{
-        create_demo_member, encrypt_with_public_key, normalize_public_key_pem, random_nonce,
+        create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
         ServerIdentity,
     },
     models::{
@@ -66,11 +65,7 @@ impl AppState {
     pub fn add_member(&self, payload: NewMemberRequest) -> Result<RegistrationResponse> {
         let public_key_pem =
             normalize_public_key_pem(payload.public_key_pem, payload.public_key_jwk)
-                .context("invalid RSA public key. Provide a PKCS#1 PEM key or a browser JWK.")?;
-
-        let public_key = RsaPublicKey::from_pkcs1_pem(&public_key_pem)
-            .context("invalid RSA public key. Use a valid PKCS#1 PEM value.")?;
-        let _ = public_key;
+                .context("invalid Ed25519 public key. Provide an OpenSSH key or browser JWK.")?;
 
         let member = Member {
             id: Uuid::new_v4().to_string(),
@@ -109,9 +104,9 @@ impl AppState {
             let demo = create_demo_member();
             vec![demo]
         });
-        
+
         let mut members = self.members.write().unwrap();
-        
+
         // Update existing members with data from file and add new ones
         for file_member in file_members {
             if let Some(existing) = members.iter_mut().find(|m| m.id == file_member.id) {
@@ -128,7 +123,7 @@ impl AppState {
                 members.push(file_member);
             }
         }
-        
+
         Ok(())
     }
 
@@ -147,7 +142,7 @@ impl AppState {
             member.active = true;
             member.clone()
         };
-        
+
         self.persist_members()?;
         Ok(member)
     }
@@ -155,13 +150,19 @@ impl AppState {
     pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
         // Refresh members from file to pick up any manual changes
         self.refresh_members()?;
-        
+
         let members = self.members.read().unwrap();
         let member = members
             .iter()
             .find(|item| item.id == request.member_id)
             .cloned()
             .context("member not found")?;
+        verify_member_signature(
+            &member.public_key_pem,
+            &request.client_nonce,
+            &request.client_nonce_signature,
+        )
+        .context("client nonce signature verification failed")?;
 
         if !member.active {
             anyhow::bail!("member is inactive and cannot request a door challenge");
@@ -169,8 +170,6 @@ impl AppState {
 
         let nonce = random_nonce();
         let challenge_id = Uuid::new_v4().to_string();
-        let encrypted_nonce = encrypt_with_public_key(&member.public_key_pem, &nonce)?;
-
         let record = ChallengeRecord {
             member_id: member.id.clone(),
             nonce: nonce.clone(),
@@ -185,16 +184,17 @@ impl AppState {
         Ok(ChallengeResponse {
             challenge_id,
             member_id: member.id,
-            encrypted_nonce,
+            server_nonce: nonce,
             server_challenge_signature: self.server_identity.sign_challenge(&request.server_challenge)?,
-            note: "Verify the server signature, decrypt the payload with the member private key, then send the plaintext nonce back to the unlock endpoint.".to_string(),
+            client_nonce: request.client_nonce,
+            note: "Verify the server signature, sign the returned server nonce with the member private key, then send the signature back to the unlock endpoint.".to_string(),
         })
     }
 
     pub fn unlock_door(&self, request: UnlockRequest) -> Result<UnlockResponse> {
         // Refresh members from file to pick up any manual changes
         self.refresh_members()?;
-        
+
         let member = {
             let members = self.members.read().unwrap();
             members
@@ -220,9 +220,12 @@ impl AppState {
             anyhow::bail!("challenge does not belong to this member");
         }
 
-        if challenge.nonce != request.decrypted_nonce {
-            anyhow::bail!("decrypted nonce did not match the original challenge");
-        }
+        verify_member_signature(
+            &member.public_key_pem,
+            &challenge.nonce,
+            &request.server_nonce_signature,
+        )
+        .context("server nonce signature verification failed")?;
 
         let mut challenges = self.challenges.write().unwrap();
         challenges.remove(&request.challenge_id);
@@ -279,7 +282,9 @@ impl AppState {
 mod tests {
     use super::*;
     use crate::{
-        crypto::{generate_test_server_identity, verify_server_signature},
+        crypto::{
+            generate_test_member_key, generate_test_server_identity, verify_server_signature,
+        },
         persistence::FileRepositories,
     };
 
@@ -292,7 +297,7 @@ mod tests {
     #[test]
     fn demo_member_data_bootstraps() {
         let member = create_demo_member();
-        assert!(member.public_key_pem.contains("BEGIN RSA PUBLIC KEY"));
+        assert!(member.public_key_pem.starts_with("ssh-ed25519 "));
         assert!(member.is_debug);
         assert!(member.active);
     }
@@ -366,7 +371,7 @@ mod tests {
         let request = UnlockRequest {
             member_id: member.id.clone(),
             challenge_id,
-            decrypted_nonce: nonce,
+            server_nonce_signature: "invalid".to_string(),
         };
 
         assert!(state.unlock_door(request).is_err());
@@ -375,7 +380,10 @@ mod tests {
     #[test]
     fn challenge_response_signs_the_server_nonce() {
         let state = temp_state();
-        let member = create_demo_member();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let mut member = create_demo_member();
+        member.id = "signed-member".to_string();
+        member.public_key_pem = member_public_key;
 
         {
             let mut members = state.members.write().unwrap();
@@ -386,6 +394,14 @@ mod tests {
             .generate_challenge(ChallengeRequest {
                 member_id: member.id,
                 server_challenge: "browser-challenge".to_string(),
+                client_nonce: "client".to_string(),
+                client_nonce_signature: {
+                    let signature = member_key.sign(b"client");
+                    base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        signature.to_bytes(),
+                    )
+                },
             })
             .unwrap();
 
@@ -400,11 +416,12 @@ mod tests {
     #[test]
     fn successful_unlock_updates_member_last_used() {
         let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
         let member = Member {
             id: "active-member".to_string(),
             name: "Active".to_string(),
             email: "active@harstadmakers.no".to_string(),
-            public_key_pem: create_demo_member().public_key_pem,
+            public_key_pem: member_public_key,
             active: true,
             is_debug: false,
             created_at: Utc::now().to_rfc3339(),
@@ -434,7 +451,12 @@ mod tests {
             .unlock_door(UnlockRequest {
                 member_id: member.id.clone(),
                 challenge_id,
-                decrypted_nonce: nonce,
+                server_nonce_signature: {
+                    base64::Engine::encode(
+                        &base64::engine::general_purpose::STANDARD,
+                        member_key.sign(nonce.as_bytes()).to_bytes(),
+                    )
+                },
             })
             .unwrap();
 

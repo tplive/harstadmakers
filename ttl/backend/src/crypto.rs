@@ -1,22 +1,13 @@
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use chrono::Utc;
-use ed25519_dalek::{Signer, SigningKey};
-use rand::{rngs::OsRng, Rng};
-use rsa::BigUint;
-use rsa::{
-    pkcs1::{DecodeRsaPublicKey, EncodeRsaPrivateKey, EncodeRsaPublicKey, LineEnding},
-    Oaep, RsaPrivateKey, RsaPublicKey,
-};
-use sha2::Sha256;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use rand::Rng;
 use ssh_key::{private::KeypairData, PrivateKey};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-#[cfg(test)]
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
 use crate::models::Member;
 
@@ -29,53 +20,30 @@ pub struct ServerIdentity {
 impl ServerIdentity {
     pub fn load_from_default_ssh_dir() -> Result<Self> {
         let home_dir = std::env::var("HOME").context("HOME is not set")?;
-        let ssh_dir = PathBuf::from(home_dir).join(".ssh");
-        Self::load_from_ssh_dir(&ssh_dir)
+        Self::load_from_ssh_dir(&PathBuf::from(home_dir).join(".ssh"))
     }
 
     pub fn load_from_ssh_dir(ssh_dir: &Path) -> Result<Self> {
         let private_key_path = ssh_dir.join("id_ed25519");
-        let public_key_path = if ssh_dir.join("id_ed25519.pub").exists() {
-            ssh_dir.join("id_ed25519.pub")
-        } else {
-            ssh_dir.join("if_ed25519.pub")
-        };
-
+        let public_key_path = ssh_dir.join("id_ed25519.pub");
+        
         Self::load_from_files(&private_key_path, &public_key_path)
     }
 
     pub fn load_from_files(private_key_path: &Path, public_key_path: &Path) -> Result<Self> {
-        if !private_key_path.exists() {
-            anyhow::bail!(
-                "missing required server private key at {}",
-                private_key_path.display()
-            );
-        }
-
-        if !public_key_path.exists() {
-            anyhow::bail!(
-                "missing required server public key at {}",
-                public_key_path.display()
-            );
-        }
-
         let private_key = PrivateKey::read_openssh_file(private_key_path)
             .with_context(|| format!("failed to read {}", private_key_path.display()))?;
-
         let signing_key = match private_key.key_data() {
             KeypairData::Ed25519(keypair) => SigningKey::from_bytes(&keypair.private.to_bytes()),
             _ => anyhow::bail!("server private key must be an Ed25519 key"),
         };
-
         let public_key_openssh = fs::read_to_string(public_key_path)
             .with_context(|| format!("failed to read {}", public_key_path.display()))?
             .trim()
             .to_string();
-
         if !public_key_openssh.starts_with("ssh-ed25519 ") {
             anyhow::bail!("server public key must use the ssh-ed25519 format");
         }
-
         Ok(Self {
             public_key_openssh,
             signing_key,
@@ -90,37 +58,20 @@ impl ServerIdentity {
         if challenge.trim().is_empty() {
             anyhow::bail!("server challenge must not be empty");
         }
-
-        let signature = self.signing_key.sign(challenge.as_bytes());
-        Ok(BASE64.encode(signature.to_bytes()))
+        Ok(BASE64.encode(self.signing_key.sign(challenge.as_bytes()).to_bytes()))
     }
 }
 
 pub fn create_demo_member() -> Member {
-    let (private_key, public_key) =
-        generate_demo_keypair().expect("failed to generate demo keypair");
-    let public_key_pem = public_key
-        .to_pkcs1_pem(LineEnding::LF)
-        .expect("failed to serialize public key")
-        .to_string();
-
+    let signing_key = SigningKey::from_bytes(&rand::random());
+    let public_key = encode_ssh_ed25519_public_key(&signing_key.verifying_key());
     println!("Demo member ID: demo-member");
-    println!("Demo member private key (for mobile device testing only):");
-    println!(
-        "{}",
-        private_key
-            .to_pkcs1_pem(LineEnding::LF)
-            .expect("failed to serialize private key")
-            .to_string()
-    );
-    println!("Demo member public key registered in the app:");
-    println!("{public_key_pem}");
-
+    println!("Demo member public key registered in the app:\n{public_key}");
     Member {
         id: "demo-member".to_string(),
         name: "Demo Member".to_string(),
         email: "demo@harstadmakers.no".to_string(),
-        public_key_pem,
+        public_key_pem: public_key,
         active: true,
         is_debug: true,
         created_at: Utc::now().to_rfc3339(),
@@ -128,67 +79,56 @@ pub fn create_demo_member() -> Member {
     }
 }
 
-pub fn generate_demo_keypair() -> Result<(RsaPrivateKey, RsaPublicKey)> {
-    let mut rng = OsRng;
-    let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
-    let public_key = RsaPublicKey::from(&private_key);
-    Ok((private_key, public_key))
-}
-
 pub fn normalize_public_key_pem(
     public_key_pem: Option<String>,
     public_key_jwk: Option<serde_json::Value>,
 ) -> Result<String> {
-    if let Some(pem) = public_key_pem {
-        let public_key =
-            RsaPublicKey::from_pkcs1_pem(&pem).context("invalid PKCS#1 RSA public key PEM")?;
-        return Ok(public_key
-            .to_pkcs1_pem(LineEnding::LF)
-            .context("failed to re-encode public key")?
-            .to_string());
+    if let Some(key) = public_key_pem {
+        if key.trim().starts_with("ssh-ed25519 ") {
+            return Ok(key.trim().to_string());
+        }
+        anyhow::bail!("invalid Ed25519 public key; expected ssh-ed25519 format");
     }
-
-    if let Some(jwk) = public_key_jwk {
-        let modulus = jwk
-            .get("n")
-            .and_then(|v| v.as_str())
-            .context("missing JWK modulus field 'n'")?;
-        let exponent = jwk
-            .get("e")
-            .and_then(|v| v.as_str())
-            .context("missing JWK exponent field 'e'")?;
-
-        let modulus_bytes = base64url_decode(modulus)?;
-        let exponent_bytes = base64url_decode(exponent)?;
-
-        let modulus_bigint = BigUint::from_bytes_be(&modulus_bytes);
-        let exponent_bigint = BigUint::from_bytes_be(&exponent_bytes);
-
-        let public_key = RsaPublicKey::new(modulus_bigint, exponent_bigint)
-            .context("invalid RSA public key values in JWK")?;
-
-        return Ok(public_key
-            .to_pkcs1_pem(LineEnding::LF)
-            .context("failed to encode JWK public key as PEM")?
-            .to_string());
+    let jwk = public_key_jwk.context("missing Ed25519 public key value")?;
+    if jwk.get("kty").and_then(|v| v.as_str()) != Some("OKP")
+        || jwk.get("crv").and_then(|v| v.as_str()) != Some("Ed25519")
+    {
+        anyhow::bail!("public key JWK must be an Ed25519 key");
     }
+    let bytes = base64url_decode(
+        jwk.get("x")
+            .and_then(|v| v.as_str())
+            .context("missing JWK field 'x'")?,
+    )?;
+    let raw: [u8; 32] = bytes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("Ed25519 public key must be 32 bytes"))?;
+    Ok(encode_ssh_ed25519_public_key(&VerifyingKey::from_bytes(
+        &raw,
+    )?))
+}
 
-    anyhow::bail!("missing RSA public key value")
+pub fn verify_member_signature(public_key: &str, message: &str, signature: &str) -> Result<()> {
+    let payload = public_key
+        .split_whitespace()
+        .nth(1)
+        .context("invalid Ed25519 public key")?;
+    let wire = BASE64.decode(payload)?;
+    let raw = wire
+        .get(4 + 11 + 4..)
+        .context("invalid Ed25519 public key payload")?;
+    let key: [u8; 32] = raw
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("Ed25519 public key must be 32 bytes"))?;
+    let signature = Signature::from_slice(&BASE64.decode(signature)?)?;
+    VerifyingKey::from_bytes(&key)?.verify(message.as_bytes(), &signature)?;
+    Ok(())
 }
 
 pub fn random_nonce() -> String {
-    let bytes: Vec<u8> = (0..32)
-        .map(|_| rand::thread_rng().gen_range(b'a'..=b'z'))
-        .collect();
-    String::from_utf8(bytes).expect("nonce generation should never produce invalid UTF-8")
-}
-
-pub fn encrypt_with_public_key(public_key_pem: &str, message: &str) -> Result<String> {
-    let public_key = RsaPublicKey::from_pkcs1_pem(public_key_pem)
-        .context("failed to parse registered member key")?;
-    let mut rng = OsRng;
-    let encrypted = public_key.encrypt(&mut rng, Oaep::new::<Sha256>(), message.as_bytes())?;
-    Ok(BASE64.encode(encrypted))
+    (0..32)
+        .map(|_| rand::thread_rng().gen_range(b'a'..=b'z') as char)
+        .collect()
 }
 
 fn base64url_decode(value: &str) -> Result<Vec<u8>> {
@@ -196,77 +136,46 @@ fn base64url_decode(value: &str) -> Result<Vec<u8>> {
     while normalized.len() % 4 != 0 {
         normalized.push('=');
     }
-    Ok(BASE64.decode(&normalized)?)
+    Ok(BASE64.decode(normalized)?)
+}
+
+fn encode_ssh_ed25519_public_key(key: &VerifyingKey) -> String {
+    let algorithm = b"ssh-ed25519";
+    let bytes = key.to_bytes();
+    let mut wire = Vec::with_capacity(4 + algorithm.len() + 4 + bytes.len());
+    wire.extend_from_slice(&(algorithm.len() as u32).to_be_bytes());
+    wire.extend_from_slice(algorithm);
+    wire.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+    wire.extend_from_slice(&bytes);
+    format!("ssh-ed25519 {} harstad-makers", BASE64.encode(wire))
 }
 
 #[cfg(test)]
 pub fn generate_test_server_identity() -> ServerIdentity {
-    let secret_key_bytes: [u8; 32] = rand::random();
-    let signing_key = SigningKey::from_bytes(&secret_key_bytes);
-    let public_key_openssh = format!(
-        "ssh-ed25519 {} test-server@harstadmakers",
-        encode_ssh_ed25519_public_key(&signing_key.verifying_key())
-    );
-
+    let signing_key = SigningKey::from_bytes(&rand::random());
     ServerIdentity {
-        public_key_openssh,
+        public_key_openssh: encode_ssh_ed25519_public_key(&signing_key.verifying_key()),
         signing_key,
     }
+}
+
+#[cfg(test)]
+pub fn generate_test_member_key() -> (SigningKey, String) {
+    let signing_key = SigningKey::from_bytes(&rand::random());
+    let public_key = encode_ssh_ed25519_public_key(&signing_key.verifying_key());
+    (signing_key, public_key)
 }
 
 #[cfg(test)]
 pub fn verify_server_signature(
     identity: &ServerIdentity,
     challenge: &str,
-    signature_b64: &str,
+    signature: &str,
 ) -> Result<()> {
-    let signature_bytes = BASE64.decode(signature_b64)?;
-    let signature = Signature::from_slice(&signature_bytes)?;
+    let signature = Signature::from_slice(&BASE64.decode(signature)?)?;
     identity
         .signing_key
         .verifying_key()
         .verify(challenge.as_bytes(), &signature)?;
     Ok(())
-}
-
-#[cfg(test)]
-fn encode_ssh_ed25519_public_key(verifying_key: &VerifyingKey) -> String {
-    let algorithm = b"ssh-ed25519";
-    let key_bytes = verifying_key.to_bytes();
-    let mut wire = Vec::with_capacity(4 + algorithm.len() + 4 + key_bytes.len());
-    wire.extend_from_slice(&(algorithm.len() as u32).to_be_bytes());
-    wire.extend_from_slice(algorithm);
-    wire.extend_from_slice(&(key_bytes.len() as u32).to_be_bytes());
-    wire.extend_from_slice(&key_bytes);
-    BASE64.encode(wire)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rsa_challenge_round_trip_works() {
-        let mut rng = OsRng;
-        let private_key = RsaPrivateKey::new(&mut rng, 2048).unwrap();
-        let public_key = RsaPublicKey::from(&private_key);
-        let message = "door-access-123";
-
-        let encrypted = public_key
-            .encrypt(&mut rng, Oaep::new::<Sha256>(), message.as_bytes())
-            .unwrap();
-        let decrypted = private_key
-            .decrypt(Oaep::new::<Sha256>(), &encrypted)
-            .unwrap();
-
-        assert_eq!(String::from_utf8(decrypted).unwrap(), message);
-    }
-
-    #[test]
-    fn server_identity_signs_challenges() {
-        let identity = generate_test_server_identity();
-        let signature = identity.sign_challenge("verify-me").unwrap();
-
-        assert!(verify_server_signature(&identity, "verify-me", &signature).is_ok());
-    }
 }

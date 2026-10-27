@@ -7,7 +7,9 @@ mod persistence;
 mod state;
 mod web;
 
-use crate::{crypto::ServerIdentity, persistence::FileRepositories, state::AppState, web::app_router};
+use crate::{
+    crypto::ServerIdentity, persistence::FileRepositories, state::AppState, web::app_router,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -50,6 +50,8 @@ pub struct ApproveMemberRequest {
 pub struct ChallengeRequest {
     pub member_id: String,
     pub server_challenge: String,
+    pub client_nonce: String,
+    pub client_nonce_signature: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -64,8 +66,9 @@ pub struct RegistrationResponse {
 pub struct ChallengeResponse {
     pub challenge_id: String,
     pub member_id: String,
-    pub encrypted_nonce: String,
+    pub server_nonce: String,
     pub server_challenge_signature: String,
+    pub client_nonce: String,
     pub note: String,
 }
 
@@ -73,7 +76,7 @@ pub struct ChallengeResponse {
 pub struct UnlockRequest {
     pub member_id: String,
     pub challenge_id: String,
-    pub decrypted_nonce: String,
+    pub server_nonce_signature: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
