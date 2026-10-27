@@ -1,3 +1,5 @@
+target/
+data/
 ttl/backend/target/
 ttl/backend/*.db
 ttl/backend/data/
