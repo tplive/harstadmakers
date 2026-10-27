@@ -22,13 +22,12 @@
 - [ ] Forbedre nettverksbinding og tilgangsbegrensning før produksjonssetting.
   - `0.0.0.0:3000` er akseptabelt under utvikling, men må begrenses eller sikres i produksjon.
   - Vurder også CORS-konfigurasjonen før produksjonssetting.
-- [ ] Begrense tjenesten til det private Wi-Fi-nettverket.
-- [ ] Begrense API-tilgang til betrodde mobile enheter på nettverket.
 - [ ] Fjerne wildcard CORS og tillate bare nødvendige origins dersom nettlesertilgang beholdes.
 - [ ] Vurdere direkte app-til-server-trafikk fremfor generell nettlesertilgang.
 - [ ] Legge til ratebegrensning for registrering, challenge-forespørsler og opplåsing.
 - [ ] Bygge applikasjonen for Raspberry Pi.
 - [ ] En Hall-sensor på døren kobles til en GPIO pinne på Rasberry Pi. Den trigger når døren er åpen og lukket, slik at vi kan lukke låsen når døren går igjen. Og, vi kan merke om døren åpnes uten at dørlåsen er trigget.
+- [ ] Legg til utløpstimestamp på registrering. Default 1 år fram i tid. Men slik at man kan gi midlertidig tilgang som automatisk utløper, feks en dag hvis noen trenger det.
 
 ## Autentisering og autorisasjon
 
@@ -40,6 +39,7 @@
 
 ## Datahåndtering
 
+- [x] Bygg inn støtte for Pocketbase som database istedet for members.json og door_events.json. Bruk det etablerte perstistence laget.
 - [ ] Beskytte `members.json` og `door_events.json` på Raspberry Pi-en.
 - [ ] Begrense filtillatelser slik at bare tjenesteoperatøren kan redigere filene.
 - [ ] Ta sikkerhetskopi av `members.json` før manuelle endringer.

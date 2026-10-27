@@ -17,6 +17,32 @@ cargo run
 
 Dette starter Rust-API-et på `http://localhost:3000` på den lokale tjeneren.
 
+### Persistens
+
+Uten ekstra miljøvariabler bruker backend filene `data/members.json` og
+`data/door_events.json`. For PocketBase setter du:
+
+```bash
+export POCKETBASE_URL=http://127.0.0.1:8090
+export POCKETBASE_TOKEN='<server-side PocketBase token>'
+```
+
+Valgfritt kan samlingsnavnene endres med `POCKETBASE_MEMBERS_COLLECTION` og
+`POCKETBASE_EVENTS_COLLECTION`. Standardverdiene er `members` og `door_events`.
+
+Opprett samlingene i PocketBase med disse feltene:
+
+- `members`: `member_id` (text, unique), `name` (text), `email` (text),
+  `public_key_pem` (text), `active` (bool), `created_at` (text),
+  `last_used` (text, optional)
+- `door_events`: `event_id` (text, unique), `member_id` (text), `action` (text),
+  `timestamp` (text)
+
+Backendens token må ha tilgang til å lese, opprette, oppdatere og slette poster.
+Når `POCKETBASE_URL` er satt, feiler backend eksplisitt dersom PocketBase ikke
+kan nås eller svarer med en feil; den faller ikke tilbake til JSON-filer eller
+demo-medlem.
+
 2) Start en lokal webserver for frontend
 
 ```bash

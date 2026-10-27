@@ -36,27 +36,28 @@ pub struct AppState {
 impl AppState {
     pub fn new(
         server_identity: ServerIdentity,
-        repositories: crate::persistence::FileRepositories,
+        repositories: crate::persistence::Repositories,
     ) -> Result<Self> {
         // Load members from repository
         let members = match repositories.members.load_all() {
             Ok(members) => members,
-            Err(_) => {
+            Err(_error) if repositories.bootstrap_demo_member => {
                 let demo = create_demo_member();
                 vec![demo]
             }
+            Err(error) => return Err(error),
         };
 
         // Load events from repository
-        let events = repositories.events.load_all().unwrap_or_default();
+        let events = repositories.events.load_all()?;
 
         let state = Self {
             members: Arc::new(RwLock::new(members)),
             challenges: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(RwLock::new(events)),
             server_identity,
-            member_repository: Arc::new(repositories.members),
-            event_repository: Arc::new(repositories.events),
+            member_repository: repositories.members.into(),
+            event_repository: repositories.events.into(),
             door_lock: Arc::new(MockDoorLock::new()),
         };
 
@@ -102,10 +103,7 @@ impl AppState {
     /// Merges changes from file into the in-memory cache without removing
     /// members that only exist in memory (e.g., created during tests)
     pub fn refresh_members(&self) -> Result<()> {
-        let file_members = self.member_repository.load_all().unwrap_or_else(|_| {
-            let demo = create_demo_member();
-            vec![demo]
-        });
+        let file_members = self.member_repository.load_all()?;
 
         let mut members = self.members.write().unwrap();
 
@@ -303,7 +301,7 @@ mod tests {
     fn temp_state() -> AppState {
         let temp_dir = std::env::temp_dir().join(format!("harstad-makers-test-{}", Uuid::new_v4()));
         let repositories = FileRepositories::new(temp_dir).unwrap();
-        AppState::new(generate_test_server_identity(), repositories).unwrap()
+        AppState::new(generate_test_server_identity(), repositories.into()).unwrap()
     }
 
     #[test]
