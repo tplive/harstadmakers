@@ -133,7 +133,7 @@ pub fn random_nonce() -> String {
 
 fn base64url_decode(value: &str) -> Result<Vec<u8>> {
     let mut normalized = value.replace('-', "+").replace('_', "/");
-    while normalized.len() % 4 != 0 {
+    while !normalized.len().is_multiple_of(4) {
         normalized.push('=');
     }
     Ok(BASE64.decode(normalized)?)

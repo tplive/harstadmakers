@@ -43,10 +43,7 @@ impl AppState {
         };
 
         // Load events from repository
-        let events = match repositories.events.load_all() {
-            Ok(events) => events,
-            Err(_) => Vec::new(),
-        };
+        let events = repositories.events.load_all().unwrap_or_default();
 
         let state = Self {
             members: Arc::new(RwLock::new(members)),
@@ -267,13 +264,13 @@ impl AppState {
 
     fn persist_members(&self) -> Result<()> {
         let members = self.members.read().unwrap();
-        self.member_repository.save_all(&*members)?;
+        self.member_repository.save_all(&members)?;
         Ok(())
     }
 
     fn persist_events(&self) -> Result<()> {
         let events = self.events.read().unwrap();
-        self.event_repository.save_all(&*events)?;
+        self.event_repository.save_all(&events)?;
         Ok(())
     }
 }
@@ -281,6 +278,7 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ed25519_dalek::Signer;
     use crate::{
         crypto::{
             generate_test_member_key, generate_test_server_identity, verify_server_signature,
