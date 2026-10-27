@@ -6,20 +6,19 @@
   - Nettleseren skal generere en client-nonce.
   - Nettleseren skal signere client-nonce med sin Ed25519-private nøkkel.
   - Serveren skal verifisere signaturen med registrert offentlig nøkkel.
-- [ ] Implementere utløp og kontroll av challenge etter fem minutter.
-- [ ] Sikre at serveren genererer en ny, engangs challenge for hvert opplåsingsforsøk.
+- [x] Implementere utløp og kontroll av challenge etter fem minutter.
+- [x] Sikre at serveren genererer en ny, engangs challenge for hvert opplåsingsforsøk.
 - [ ] Avvise gjenbruk av en challenge etter en vellykket opplåsing.
 - [ ] Verifisere challenge- og nonce-reglene med automatiserte tester.
 - [x] Implementere relé- og dørlåsmodulen.
   - Bruk en mock av relé og dørlås inntil fysisk maskinvareintegrasjon er klar.
   - Mocken skal kunne brukes til å verifisere at en godkjent opplåsing aktiverer dørlåsen i riktig tidsrom.
-- [ ] Fjerne `debug_member_id` fullstendig.
-- [ ] Fjerne `is_debug` feltet fra lagrede metadata.
-- [ ] Fjerne API-endepunktet for å godkjenne medlemmer.
+- [x] Fjerne `debug_member_id` fullstendig.
+- [x] Fjerne `is_debug` feltet fra lagrede metadata.
+- [x] Fjerne API-endepunktet for å godkjenne medlemmer.
   - Aktivering skal fortsatt gjøres manuelt ved redigering av `backend/data/members.json`.
   - Tilgangsansvarlig logger inn på serveren via SSH, utenfor tilgangskontrollsystemet.
   - Tilgangsansvarlig kontrollerer siste siffer i UUID manuelt sammen med brukeren før `active` settes til `true`.
-- [ ] Fjern oppretting "demo_member" i databasen. Makes no sense, siden ingen nettleser matcher.
 - [ ] Forbedre nettverksbinding og tilgangsbegrensning før produksjonssetting.
   - `0.0.0.0:3000` er akseptabelt under utvikling, men må begrenses eller sikres i produksjon.
   - Vurder også CORS-konfigurasjonen før produksjonssetting.

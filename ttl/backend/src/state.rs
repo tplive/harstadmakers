@@ -6,6 +6,8 @@ use std::{
 };
 use uuid::Uuid;
 
+const CHALLENGE_EXPIRY_MINUTES: i64 = 5;
+
 use crate::{
     crypto::{
         create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
@@ -147,18 +149,31 @@ impl AppState {
             anyhow::bail!("member is inactive and cannot request a door challenge");
         }
 
-        let nonce = random_nonce();
-        let challenge_id = Uuid::new_v4().to_string();
-        let record = ChallengeRecord {
-            member_id: member.id.clone(),
-            nonce: nonce.clone(),
-            expires_at: (Utc::now() + chrono::Duration::minutes(5)).timestamp(),
-        };
+        let (challenge_id, nonce) = {
+            let mut challenges = self.challenges.write().unwrap();
+            loop {
+                let challenge_id = Uuid::new_v4().to_string();
+                let nonce = random_nonce();
+                let id_is_unique = !challenges.contains_key(&challenge_id);
+                let nonce_is_unique = !challenges
+                    .values()
+                    .any(|challenge| challenge.nonce == nonce);
 
-        self.challenges
-            .write()
-            .unwrap()
-            .insert(challenge_id.clone(), record);
+                if id_is_unique && nonce_is_unique {
+                    challenges.insert(
+                        challenge_id.clone(),
+                        ChallengeRecord {
+                            member_id: member.id.clone(),
+                            nonce: nonce.clone(),
+                            expires_at: (Utc::now()
+                                + chrono::Duration::minutes(CHALLENGE_EXPIRY_MINUTES))
+                            .timestamp(),
+                        },
+                    );
+                    break (challenge_id, nonce);
+                }
+            }
+        };
 
         Ok(ChallengeResponse {
             challenge_id,
@@ -197,6 +212,14 @@ impl AppState {
 
         if challenge.member_id != request.member_id {
             anyhow::bail!("challenge does not belong to this member");
+        }
+
+        if Utc::now().timestamp() >= challenge.expires_at {
+            self.challenges
+                .write()
+                .unwrap()
+                .remove(&request.challenge_id);
+            anyhow::bail!("challenge has expired");
         }
 
         verify_member_signature(
@@ -406,6 +429,50 @@ mod tests {
     }
 
     #[test]
+    fn each_challenge_request_creates_a_new_challenge() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "unique-challenge-member".to_string(),
+            name: "Unique Challenge Member".to_string(),
+            email: "unique-challenge@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: true,
+            created_at: Utc::now().to_rfc3339(),
+            last_used: None,
+        };
+
+        state.members.write().unwrap().push(member.clone());
+
+        let sign_client_nonce = |nonce: &str| {
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                member_key.sign(nonce.as_bytes()).to_bytes(),
+            )
+        };
+        let first = state
+            .generate_challenge(ChallengeRequest {
+                member_id: member.id.clone(),
+                server_challenge: "browser-challenge-1".to_string(),
+                client_nonce: "client-nonce-1".to_string(),
+                client_nonce_signature: sign_client_nonce("client-nonce-1"),
+            })
+            .unwrap();
+        let second = state
+            .generate_challenge(ChallengeRequest {
+                member_id: member.id,
+                server_challenge: "browser-challenge-2".to_string(),
+                client_nonce: "client-nonce-2".to_string(),
+                client_nonce_signature: sign_client_nonce("client-nonce-2"),
+            })
+            .unwrap();
+
+        assert_ne!(first.challenge_id, second.challenge_id);
+        assert_ne!(first.server_nonce, second.server_nonce);
+        assert_eq!(state.challenges.read().unwrap().len(), 2);
+    }
+
+    #[test]
     fn successful_unlock_updates_member_last_used() {
         let state = temp_state();
         let (member_key, member_public_key) = generate_test_member_key();
@@ -456,6 +523,55 @@ mod tests {
         let members = state.members.read().unwrap();
         let saved = members.iter().find(|item| item.id == member.id).unwrap();
         assert!(saved.last_used.is_some());
+    }
+
+    #[test]
+    fn expired_challenge_cannot_unlock_door() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "expired-challenge-member".to_string(),
+            name: "Expired Challenge Member".to_string(),
+            email: "expired@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: true,
+            created_at: Utc::now().to_rfc3339(),
+            last_used: None,
+        };
+
+        {
+            let mut members = state.members.write().unwrap();
+            members.push(member.clone());
+        }
+
+        let challenge_id = Uuid::new_v4().to_string();
+        let nonce = "expired-challenge-nonce".to_string();
+        {
+            let mut challenges = state.challenges.write().unwrap();
+            challenges.insert(
+                challenge_id.clone(),
+                ChallengeRecord {
+                    member_id: member.id.clone(),
+                    nonce: nonce.clone(),
+                    expires_at: (Utc::now() - chrono::Duration::seconds(1)).timestamp(),
+                },
+            );
+        }
+
+        let result = state.unlock_door(UnlockRequest {
+            member_id: member.id,
+            challenge_id: challenge_id.clone(),
+            server_nonce_signature: base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                member_key.sign(nonce.as_bytes()).to_bytes(),
+            ),
+        });
+
+        assert!(result.is_err());
+        assert!(!state
+            .door_lock()
+            .was_unlocked_between(Utc::now() - chrono::Duration::minutes(1), Utc::now(),));
+        assert!(!state.challenges.read().unwrap().contains_key(&challenge_id));
     }
 
     #[test]
