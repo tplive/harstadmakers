@@ -42,19 +42,29 @@ function uint8ArrayToBase64(bytes) {
 export async function generateMemberKeyPair() {
   return crypto.subtle.generateKey(
     {
-      name: 'RSA-OAEP',
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: 'SHA-256',
+      name: 'Ed25519',
     },
     true,
-    ['encrypt', 'decrypt']
+    ['sign', 'verify']
   );
 }
 
 export function createServerChallenge() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return uint8ArrayToBase64(bytes);
+}
+
+export function createClientNonce() {
+  return createServerChallenge();
+}
+
+export async function signNonce(nonce) {
+  const privateKey = await getStoredPrivateKey();
+  if (!privateKey) {
+    throw new Error('No member private key found in browser storage. Register a member first.');
+  }
+  const signature = await crypto.subtle.sign('Ed25519', privateKey, new TextEncoder().encode(nonce));
+  return uint8ArrayToBase64(new Uint8Array(signature));
 }
 
 export async function exportPrivateKeyJwk(privateKey) {
@@ -74,25 +84,12 @@ export async function getStoredPrivateKey() {
 
   try {
     const keyBytes = base64UrlToUint8Array(stored);
-    return crypto.subtle.importKey('pkcs8', keyBytes, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+    return crypto.subtle.importKey('pkcs8', keyBytes, { name: 'Ed25519' }, false, ['sign']);
   } catch (error) {
     console.warn('Stored private key is invalid, removing it.', error);
     storage.removeItem(MEMBER_PRIVATE_KEY_STORAGE_KEY);
     return null;
   }
-}
-
-export async function decryptChallengeNonce(base64Value) {
-  const privateKey = await getStoredPrivateKey();
-  if (!privateKey) {
-    // Note: This message will be caught and displayed in app.js
-    // Translation handled by app.js
-    throw new Error('No member private key found in browser storage. Register a member first.');
-  }
-
-  const encryptedBytes = base64UrlToUint8Array(base64Value);
-  const decrypted = await crypto.subtle.decrypt({ name: 'RSA-OAEP', hash: 'SHA-256' }, privateKey, encryptedBytes);
-  return new TextDecoder().decode(decrypted);
 }
 
 export async function storeMemberPrivateKey(privateKey) {

@@ -21,7 +21,8 @@ function resolveApiBase() {
 import {
   clearStoredRegistration,
   createServerChallenge,
-  decryptChallengeNonce,
+  createClientNonce,
+  signNonce,
   exportPublicKeyJwk,
   generateMemberKeyPair,
   getStoredServerPublicKey,
@@ -145,6 +146,8 @@ async function attemptChallengeFlow(memberId) {
     }
 
     const serverChallenge = createServerChallenge();
+    const clientNonce = createClientNonce();
+    const clientNonceSignature = await signNonce(clientNonce);
     console.log('Created server challenge:', serverChallenge.substring(0, 20) + '...');
     
     const response = await fetch(`${API_BASE}/api/challenge`, {
@@ -154,7 +157,9 @@ async function attemptChallengeFlow(memberId) {
       },
       body: JSON.stringify({ 
         member_id: memberId, 
-        server_challenge: serverChallenge 
+        server_challenge: serverChallenge,
+        client_nonce: clientNonce,
+        client_nonce_signature: clientNonceSignature
       }),
     });
 
@@ -167,6 +172,10 @@ async function attemptChallengeFlow(memberId) {
       const errorInfo = getErrorInfo(backendError, memberId);
       console.error('Error type:', errorInfo.type);
       throw { type: errorInfo.type, message: errorInfo.message, original: backendError };
+    }
+
+    if (data.client_nonce !== clientNonce) {
+      throw { type: 'verification_failed', message: 'Server-verifisering mislyktes. Prøv på nytt.', original: 'Client nonce mismatch' };
     }
 
     // Verify server signature
@@ -184,10 +193,6 @@ async function attemptChallengeFlow(memberId) {
     currentChallengeId = data.challenge_id;
     console.log('Challenge verified, storing challenge_id:', currentChallengeId);
     
-    // Decrypt the nonce to verify we can
-    const decryptedNonce = await decryptChallengeNonce(data.encrypted_nonce);
-    console.log('Successfully decrypted nonce:', decryptedNonce.substring(0, 20) + '...');
-
     // Registration is valid and member is active
     console.log('Registration verified and member is active');
     setStatus('Registrering bekreftet. Klar til å låse opp.', 'success');
@@ -361,6 +366,8 @@ async function unlockDoor() {
     }
 
     const serverChallenge = createServerChallenge();
+    const clientNonce = createClientNonce();
+    const clientNonceSignature = await signNonce(clientNonce);
     
     // Request challenge
     const challengeResponse = await fetch(`${API_BASE}/api/challenge`, {
@@ -370,7 +377,9 @@ async function unlockDoor() {
       },
       body: JSON.stringify({ 
         member_id: currentMemberId, 
-        server_challenge: serverChallenge 
+        server_challenge: serverChallenge,
+        client_nonce: clientNonce,
+        client_nonce_signature: clientNonceSignature
       }),
     });
 
@@ -381,6 +390,10 @@ async function unlockDoor() {
       const backendError = challengeData.error || 'Challenge mislyktes';
       const errorInfo = getErrorInfo(backendError, currentMemberId);
       throw { type: errorInfo.type, message: errorInfo.message, original: backendError };
+    }
+
+    if (challengeData.client_nonce !== clientNonce) {
+      throw { type: 'verification_failed', message: 'Server-verifisering mislyktes.', original: 'Client nonce mismatch' };
     }
 
     // Verify server signature
@@ -395,11 +408,9 @@ async function unlockDoor() {
     }
 
     currentChallengeId = challengeData.challenge_id;
-    console.log('Challenge verified, decrypting nonce...');
+    console.log('Challenge verified, signing server nonce...');
     
-    // Decrypt nonce
-    const decryptedNonce = await decryptChallengeNonce(challengeData.encrypted_nonce);
-    console.log('Nonce decrypted successfully');
+    const serverNonceSignature = await signNonce(challengeData.server_nonce);
 
     // Unlock door
     setStatus('Låser opp døra...', 'neutral');
@@ -413,7 +424,7 @@ async function unlockDoor() {
       body: JSON.stringify({
         member_id: currentMemberId,
         challenge_id: currentChallengeId,
-        decrypted_nonce: decryptedNonce,
+        server_nonce_signature: serverNonceSignature,
       }),
     });
 
