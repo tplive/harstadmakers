@@ -31,7 +31,7 @@ import {
   storeMemberPrivateKey,
   storeServerPublicKey,
   verifyServerChallenge,
-} from './demo-crypto.mjs';
+} from './ttl-crypto.mjs';
 
 const API_BASE = resolveApiBase();
 

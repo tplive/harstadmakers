@@ -5,7 +5,7 @@ import {
   getStoredPrivateKey,
   storeMemberPrivateKey,
   signNonce,
-} from './demo-crypto.mjs';
+} from './ttl-crypto.mjs';
 
 const memoryStore = new Map();
 globalThis.localStorage = {

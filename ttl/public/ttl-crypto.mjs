@@ -1,6 +1,6 @@
-export const MEMBER_PRIVATE_KEY_STORAGE_KEY = 'harstad-makers-private-key';
-export const MEMBER_ID_STORAGE_KEY = 'harstad-makers-member-id';
-export const SERVER_PUBLIC_KEY_STORAGE_KEY = 'harstad-makers-server-public-key';
+export const MEMBER_PRIVATE_KEY_STORAGE_KEY = 'ttl-private-key';
+export const MEMBER_ID_STORAGE_KEY = 'ttl-member-id';
+export const SERVER_PUBLIC_KEY_STORAGE_KEY = 'ttl-server-public-key';
 const fallbackStorage = {
   values: new Map(),
   getItem(key) {
