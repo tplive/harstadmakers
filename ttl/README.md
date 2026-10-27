@@ -6,9 +6,9 @@ Lokal tilgangskontroll for å komme inn i våre lokaler. Tilgangskontrollen vil 
 
 ## Hvordan virker det?
 
-Den endelige designen er bevisst enkel:
+Designet er superenkelt for brukeren, og avansert nok til å være sikkert:
 
-1. Medlemmer må registrere seg før de kan bruke tilgangskontrollen. Dette gjøres èn gang, men må gjentas hvis man bytter telefon eller rensker nettleseren på telefonen, da tilgangskoden lagres der. En bruker kan ha flere nettlesere godkjent. Feks en mobil og en på sin pc.
+1. Medlemmer må registrere seg før de kan bruke tilgangskontrollen. Dette gjøres èn gang, men må gjentas hvis man bytter telefon eller rensker nettleseren på telefonen, da tilgangskoden lagres der. En bruker kan ha flere nettlesere godkjent. Feks en mobil og en på sin pc. **Det er ingen innlogging eller passord å huske.**
 1. Registreringen gjør at medlemmets tilgangsnøkkel lagres på server.
 1. Når man vil låse opp døren, åpner man nettstedet fra mobilen sin mens man står på utsiden.
 1. Nettleser og server utveksler litt data, og nettleseren må bevise at den har rett tilgangsnøkkel ved å dekryptere en utfordring fra server.
@@ -34,6 +34,7 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
   - **fortsatt styrt av huseier**
 
 ## Hvilken software inngår?
+
 - Serveren leverer en nettside og et API for dørkontrollen.
 - Serveren henter sertifikat for `ttl.harstadmakers.no` og `ttl-api.harstadmakers.no` fra Let's Encrypt via Certbot.
 - Serveren kjører Nginx som TLS terminator. Se lenger ned i dokumentet.
@@ -47,12 +48,14 @@ Teknologien som brukes kalles Public Key Encryption. Dersom du er nysgjerrig kan
 - Persistens: JSON-baserte logger og medlemsdata i backend-data-mappen. **Kommer: En database som erstatter filene!**
 
 Aktører:
+
 - Serveren
 - Nettleseren
 - Brukeren
 - Tilgangsansvarlig
 
 ### Registrering
+
 - Tilgangsflyt:
   1. Brukeren kobler til wifi og åpner nettsiden.
   1. Brukeren taster inn navn og epost og trykker på "Registrering". Dette genererer en public/private nøkkelpar og en UUID.
@@ -108,6 +111,7 @@ sequenceDiagram
 ```
 
 ### Opplåsing av døra  
+
 - Tilgangsflyt:
   1. Brukeren kobler til trådløsnettet og åpner nettsiden.
   1. Nettleseren sjekker local storage og finner at den er registrert.
@@ -118,9 +122,9 @@ sequenceDiagram
      - serveren dekrypterer client-nonce og returnerer den som bevis på at den er riktig server.
      - serveren gir beskjed til nettleseren om at brukeren må registrere seg.
      - nettleseren viser brukeren en knapp for "Slett registrering", som vil fjerne alle relevante verdier fra local storage i nettleseren og nullstille nettleseren.
-  1. Dersom den finnes, 
+  1. Dersom den finnes,
      - serveren dekrypterer client-nonce og returnerer den som bevis på at den er riktig server.
-     - genererer serveren en server-nonce som den krypterer med brukerens registrerte public key og 
+     - genererer serveren en server-nonce som den krypterer med brukerens registrerte public key og
      - sender kryptert server-nonce til nettleser som challenge.
   1. Nettleseren dekrypterer server-nonce med brukerens private nøkkel og sender dekryptert verdi tilbake til server som bevis på at den er den riktige nettleseren.
   1. Serveren validerer dekryptert server-nonce og gir melding tilbake til nettleseren om at brukeren er klarert for å låse opp døra.
@@ -172,15 +176,15 @@ sequenceDiagram
 
 Noen nøkkelpunkter som gjør løsningen svært sikker og robust:
 
-* Nettleser genererer og lagrer sin egen private nøkkel, som aldri forlater nettleseren.
-* Server genererer og lagrer sin egen private nøkkel, som aldri forlater serveren.
-* Nettleser representerer sin identitet med å sende over sin offentlige nøkkel til serveren ved registrering.
-* Server representerer sin identitet med å sende over sin offentlige nøkkel til nettleseren ved registrering.
-* Nettleser lagrer ikke selv sin offentlige nøkkel, men kan bevise sin identitet ved å dekryptere nonce sendt fra server.
-* Server kan bevise sin identitet ved å dekryptere nonce sendt fra nettleser.
-* Trafikk mellom nettleser på mobil og server er kryptert over HTTPS.
-* Løsningen er ikke eksponert på Internett, brukeren må være tilknyttet lokalnettverket.
-* Etter registrering må en administrator flagge registreringen som aktiv før brukeren kan låse opp døren.
+- Nettleser genererer og lagrer sin egen private nøkkel, som aldri forlater nettleseren.
+- Server genererer og lagrer sin egen private nøkkel, som aldri forlater serveren.
+- Nettleser representerer sin identitet med å sende over sin offentlige nøkkel til serveren ved registrering.
+- Server representerer sin identitet med å sende over sin offentlige nøkkel til nettleseren ved registrering.
+- Nettleser lagrer ikke selv sin offentlige nøkkel, men kan bevise sin identitet ved å dekryptere nonce sendt fra server.
+- Server kan bevise sin identitet ved å dekryptere nonce sendt fra nettleser.
+- Trafikk mellom nettleser på mobil og server er kryptert over HTTPS.
+- Løsningen er ikke eksponert på Internett, brukeren må være tilknyttet lokalnettverket.
+- Etter registrering må en administrator flagge registreringen som aktiv før brukeren kan låse opp døren.
 
 ### Nettleser
 
@@ -198,7 +202,6 @@ I teorien kan en angriper (MiTM) sende over javascript som forbigår server-sjek
 Ved forespørsel fra nettleser genererer backend en nonce og krypterer den med medlemmets offentlige nøkkel. Den sender kryptert nonce til klienten. Nettleseren  dekrypterer nonce med den private nøkkelen og sender klarteksten tilbake for verifisering. Når klarteksten matcher lagret nonce, godkjenner backend døråpning. Brukeren ber nå om å få åpnet døren, og dette trigger dørlåsen.
 
 Backend har en forhåndsgenerert Ed25519 SSH-nøkkel i `~/.ssh/id_ed25519` og en offentlig nøkkel i `~/.ssh/id_ed25519.pub`. Den offentlige
-
 
 - Certbot obtains and renews the TLS certificate for the RPI hostname.
 - The mobile browser trusts the RPI certificate through its built-in trusted Certificate Authorities.
