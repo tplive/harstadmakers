@@ -26,7 +26,7 @@ impl ServerIdentity {
     pub fn load_from_ssh_dir(ssh_dir: &Path) -> Result<Self> {
         let private_key_path = ssh_dir.join("id_ed25519");
         let public_key_path = ssh_dir.join("id_ed25519.pub");
-        
+
         Self::load_from_files(&private_key_path, &public_key_path)
     }
 
@@ -73,7 +73,6 @@ pub fn create_demo_member() -> Member {
         email: "demo@harstadmakers.no".to_string(),
         public_key_pem: public_key,
         active: true,
-        is_debug: true,
         created_at: Utc::now().to_rfc3339(),
         last_used: None,
     }
