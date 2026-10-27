@@ -68,15 +68,15 @@ sequenceDiagram
    participant Bruker
    participant Nettleser
    participant Server
-   participant Medlemslagring
+   participant Medlemsdata
 
    Bruker->>Nettleser: Åpner nettsiden og fyller ut navn og epost
    Bruker->>Nettleser: Trykker «Registrering»
    Nettleser->>Nettleser: Genererer nøkkelpar og UUID
    Nettleser->>Nettleser: Lagrer privat nøkkel og UUID i local storage
    Nettleser->>Server: Sender navn, epost, offentlig nøkkel og UUID
-   Server->>Medlemslagring: Lagrer registreringen
-   Medlemslagring-->>Server: Bekrefter lagring
+   Server->>Medlemsdata: Lagrer registreringen
+   Medlemsdata-->>Server: Bekrefter lagring
    Server-->>Nettleser: Sender mottaksmelding og serverens offentlige nøkkel
    Nettleser->>Nettleser: Lagrer serverens offentlige nøkkel i local storage
    Nettleser-->>Bruker: Viser at registreringen er mottatt
@@ -94,19 +94,19 @@ sequenceDiagram
    participant Bruker
    participant Tilgangsansvarlig
    participant Server
-   participant Medlemslagring
+   participant Medlemsdata
 
    Bruker->>Tilgangsansvarlig: Fullfører registreringen
    Tilgangsansvarlig->>Server: Logger inn og søker etter registreringen
-   Server->>Medlemslagring: Henter registreringer
-   Medlemslagring-->>Server: Returnerer registreringer
+   Server->>Medlemsdata: Henter registreringer
+   Medlemsdata-->>Server: Returnerer registreringer
    Server-->>Tilgangsansvarlig: Viser registrering funnet med epost eller navn
    Tilgangsansvarlig->>Bruker: Ber om siste siffer i UUID
    Bruker-->>Tilgangsansvarlig: Oppgir siste siffer i UUID
    Tilgangsansvarlig->>Tilgangsansvarlig: Verifiserer UUID-sifferet
    Tilgangsansvarlig->>Server: Setter «active»: «true»
-   Server->>Medlemslagring: Lagrer aktiv registrering
-   Medlemslagring-->>Server: Bekrefter oppdateringen
+   Server->>Medlemsdata: Lagrer aktiv registrering
+   Medlemsdata-->>Server: Bekrefter oppdateringen
    Server-->>Tilgangsansvarlig: Bekrefter at brukeren er aktivert
 ```
 
@@ -137,7 +137,7 @@ sequenceDiagram
    participant Bruker
    participant Nettleser
    participant Server
-   participant Medlemslagring
+   participant Medlemsdata
    participant Relè
    participant Dørlås
 
@@ -145,8 +145,8 @@ sequenceDiagram
    Nettleser->>Nettleser: Henter privat nøkkel og UUID fra local storage
    Nettleser->>Nettleser: Genererer og krypterer client-nonce
    Nettleser->>Server: Sender UUID og kryptert client-nonce
-   Server->>Medlemslagring: Sjekker om UUID finnes
-   Medlemslagring-->>Server: Returnerer registreringen
+   Server->>Medlemsdata: Sjekker om UUID finnes
+   Medlemsdata-->>Server: Returnerer registreringen
 
    alt UUID finnes ikke
       Server->>Server: Dekrypterer client-nonce
