@@ -8,7 +8,33 @@
 
 ## Kjøre løsningen lokalt
 
-1) Start backend først
+### 1. Database
+
+Backend kan enten lagre medlemsdata i `data/members.json` og hendelser i `data/door_events.json`, men man kan også bruke [Pocketbase](https://pocketbase.io). Hvis du ikke vil bruke PB er det bare å hoppe over dette steget. 
+
+For PocketBase setter du:
+
+```bash
+export POCKETBASE_URL=http://127.0.0.1:8090
+export POCKETBASE_TOKEN='<server-side PocketBase token>'
+```
+
+Collections i Pocketbase heter default `members` og `door_events`. Dersom man absolutt må kalle dem noe annet, kan man sette miljøvariablene `POCKETBASE_MEMBERS_COLLECTION` og `POCKETBASE_EVENTS_COLLECTION` til noe annet.
+
+Men det enkleste er å bruke standard schema. Dette er eksportert og kan importeres `fra ttl/backend/pb_schema.json`.
+
+Backendens token må ha tilgang til å lese, opprette, oppdatere og slette poster.
+
+Ved registrering vil record i `members` opprettes uten `id` - ID'en autogenereres av PocketBase, returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
+
+I JSON-filene som opprettes når man ikke bruker database heter `member_id`. Ved lagring av dørhendelser opprettes `id` automatisk, og PocketBase sin tildelte ID brukes som `DoorEvent.id`.
+
+Ved oppstart kontrollerer backend at begge collections finnes og at alle feltene over har riktig PocketBase-type. Manglende collections eller feil felttyper stopper oppstart med en konkret feilmelding.
+
+Når `POCKETBASE_URL` er satt, feiler backend dersom databasen ikke er tilgjengelig eller svarer med en feil; den faller ikke tilbake til JSON-filer.
+
+### 2. Backend
+Start backend med
 
 ```bash
 cd backend
@@ -17,33 +43,9 @@ cargo run
 
 Dette starter Rust-API-et på `http://localhost:3000` på den lokale tjeneren.
 
-### Persistens
+### 3. Frontend
 
-Uten ekstra miljøvariabler bruker backend filene `data/members.json` og
-`data/door_events.json`. For PocketBase setter du:
-
-```bash
-export POCKETBASE_URL=http://127.0.0.1:8090
-export POCKETBASE_TOKEN='<server-side PocketBase token>'
-```
-
-Valgfritt kan samlingsnavnene endres med `POCKETBASE_MEMBERS_COLLECTION` og
-`POCKETBASE_EVENTS_COLLECTION`. Standardverdiene er `members` og `door_events`.
-
-Opprett samlingene i PocketBase med disse feltene:
-
-- `members`: `member_id` (text, unique), `name` (text), `email` (text),
-  `public_key_pem` (text), `active` (bool), `created_at` (text),
-  `last_used` (text, optional)
-- `door_events`: `event_id` (text, unique), `member_id` (text), `action` (text),
-  `timestamp` (text)
-
-Backendens token må ha tilgang til å lese, opprette, oppdatere og slette poster.
-Når `POCKETBASE_URL` er satt, feiler backend eksplisitt dersom PocketBase ikke
-kan nås eller svarer med en feil; den faller ikke tilbake til JSON-filer eller
-demo-medlem.
-
-2) Start en lokal webserver for frontend
+Start en lokal webserver for frontend:
 
 ```bash
 cd public
