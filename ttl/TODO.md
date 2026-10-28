@@ -32,7 +32,7 @@
 ## Autentisering og autorisasjon
 
 - [ ] Kreve besittelse av den registrerte private nøkkelen for alle medlemsoperasjoner.
-- [ ] Knytte hver medlemskonto til én offentlig nøkkel lagret i `members.json`.
+- [ ] Knytte hver medlemskonto til én offentlig nøkkel lagret i medlemsdatabasen.
 - [ ] Avvise alle opplåsingsforsøk som ikke beviser besittelse av tilhørende private nøkkel.
 - [ ] Verifisere at hver challenge er knyttet til medlemmet som sender opplåsingsforespørselen.
 - [ ] Kontrollere at returnert nonce er identisk med den lagrede challenge-nonce-en.
