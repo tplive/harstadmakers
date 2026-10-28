@@ -125,7 +125,9 @@ async function checkRegistrationStatus() {
       setHidden(memberPanelEl, false);
       
       // Update panel copy based on error type
-      if (errorType === 'member_inactive') {
+      if (errorType === 'member_expired') {
+        memberPanelCopyEl.textContent = 'Tilgangen er utløpt og deaktivert. Kontakt administrator for reaktivering.';
+      } else if (errorType === 'member_inactive') {
         memberPanelCopyEl.textContent = 'Registreringen venter på godkjenning fra administrator.';
       } else {
         memberPanelCopyEl.textContent = 'Nettleseren er registrert og klar til bruk.';
@@ -226,6 +228,12 @@ function getErrorInfo(backendError, memberId) {
     return {
       type: 'registration_missing',
       message: `Registreringen din (${memberId}) finnes ikke på serveren. Den kan ha blitt slettet. Vennligst registrer på nytt.`
+    };
+  }
+  if (errorLower.includes('expired') || errorLower.includes('utløpt')) {
+    return {
+      type: 'member_expired',
+      message: `Tilgangen din (${memberId}) er utløpt og deaktivert. Kontakt administrator for reaktivering.`
     };
   }
   if (errorLower.includes('member is inactive') || errorLower.includes('inactive')) {
