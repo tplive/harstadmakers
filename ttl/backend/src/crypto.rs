@@ -74,6 +74,7 @@ pub fn create_demo_member() -> Member {
         public_key_pem: public_key,
         active: true,
         created_at: Utc::now().to_rfc3339(),
+        expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
         last_used: None,
     }
 }
