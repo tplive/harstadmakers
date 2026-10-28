@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -78,15 +78,16 @@ impl AppState {
             public_key_pem,
             active: false,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
+        let member = self.member_repository.save_member(&member)?;
         {
             let mut members = self.members.write().unwrap();
             members.push(member.clone());
         }
 
-        self.persist_members()?;
         Ok(RegistrationResponse {
             member,
             server_public_key: self.server_identity.public_key_openssh().to_string(),
@@ -116,6 +117,7 @@ impl AppState {
                 existing.email = file_member.email;
                 existing.public_key_pem = file_member.public_key_pem;
                 existing.created_at = file_member.created_at;
+                existing.expires_at = file_member.expires_at;
                 existing.last_used = file_member.last_used;
             } else {
                 // Add new member from file
@@ -142,6 +144,15 @@ impl AppState {
             &request.client_nonce_signature,
         )
         .context("client nonce signature verification failed")?;
+
+        let expires_at = DateTime::parse_from_rfc3339(&member.expires_at)
+            .context("member expiration timestamp is invalid")?
+            .with_timezone(&Utc);
+        if expires_at <= Utc::now() {
+            anyhow::bail!(
+                "medlemsregistreringen har utløpt og er deaktivert; vennligst kontakt administrator for reaktivering"
+            );
+        }
 
         if !member.active {
             anyhow::bail!("member is inactive and cannot request a door challenge");
@@ -197,18 +208,23 @@ impl AppState {
         };
 
         if !member.active {
+            self.record_failed_unlock_attempt(&member.id)?;
             anyhow::bail!("member is inactive and cannot unlock the door");
         }
 
-        let challenge = {
+        let challenge = match {
             let challenges = self.challenges.read().unwrap();
-            challenges
-                .get(&request.challenge_id)
-                .cloned()
-                .context("challenge not found or expired")?
+            challenges.get(&request.challenge_id).cloned()
+        } {
+            Some(challenge) => challenge,
+            None => {
+                self.record_failed_unlock_attempt(&member.id)?;
+                anyhow::bail!("challenge not found or expired");
+            }
         };
 
         if challenge.member_id != request.member_id {
+            self.record_failed_unlock_attempt(&member.id)?;
             anyhow::bail!("challenge does not belong to this member");
         }
 
@@ -217,15 +233,20 @@ impl AppState {
                 .write()
                 .unwrap()
                 .remove(&request.challenge_id);
+            self.record_failed_unlock_attempt(&member.id)?;
             anyhow::bail!("challenge has expired");
         }
 
-        verify_member_signature(
+        if verify_member_signature(
             &member.public_key_pem,
             &challenge.nonce,
             &request.server_nonce_signature,
         )
-        .context("server nonce signature verification failed")?;
+        .is_err()
+        {
+            self.record_failed_unlock_attempt(&member.id)?;
+            anyhow::bail!("server nonce signature verification failed");
+        }
 
         let mut challenges = self.challenges.write().unwrap();
         challenges.remove(&request.challenge_id);
@@ -250,13 +271,10 @@ impl AppState {
             timestamp: unlock_time.to_rfc3339(),
         };
 
-        {
-            let mut events = self.events.write().unwrap();
-            events.push(event);
-        }
+        let event = self.event_repository.save_event(&event)?;
+        self.events.write().unwrap().push(event);
 
         self.persist_members()?;
-        self.persist_events()?;
 
         Ok(UnlockResponse {
             approved: true,
@@ -278,6 +296,18 @@ impl AppState {
     fn persist_events(&self) -> Result<()> {
         let events = self.events.read().unwrap();
         self.event_repository.save_all(&events)?;
+        Ok(())
+    }
+
+    fn record_failed_unlock_attempt(&self, member_id: &str) -> Result<()> {
+        let event = DoorEvent {
+            id: Uuid::new_v4().to_string(),
+            member_id: member_id.to_string(),
+            action: "failed_unlock_attempt".to_string(),
+            timestamp: Utc::now().to_rfc3339(),
+        };
+        let event = self.event_repository.save_event(&event)?;
+        self.events.write().unwrap().push(event);
         Ok(())
     }
 
@@ -322,6 +352,7 @@ mod tests {
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -359,6 +390,7 @@ mod tests {
             public_key_pem: create_demo_member().public_key_pem,
             active: false,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -388,6 +420,43 @@ mod tests {
         };
 
         assert!(state.unlock_door(request).is_err());
+        let events = state.events.read().unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].action, "failed_unlock_attempt");
+        assert_eq!(events[0].member_id, member.id);
+    }
+
+    #[test]
+    fn expired_inactive_member_gets_expiration_error() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "expired-inactive-member".to_string(),
+            name: "Expired Inactive".to_string(),
+            email: "expired-inactive@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: false,
+            created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() - chrono::Duration::days(1)).to_rfc3339(),
+            last_used: None,
+        };
+        state.members.write().unwrap().push(member.clone());
+
+        let error = state
+            .generate_challenge(ChallengeRequest {
+                member_id: member.id,
+                server_challenge: "browser-challenge".to_string(),
+                client_nonce: "client".to_string(),
+                client_nonce_signature: base64::Engine::encode(
+                    &base64::engine::general_purpose::STANDARD,
+                    member_key.sign(b"client").to_bytes(),
+                ),
+            })
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("expired and is deactivated"));
+        assert!(error.contains("reactivation"));
     }
 
     #[test]
@@ -437,6 +506,7 @@ mod tests {
             public_key_pem: member_public_key,
             active: true,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -481,6 +551,7 @@ mod tests {
             public_key_pem: member_public_key,
             active: true,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -534,6 +605,7 @@ mod tests {
             public_key_pem: member_public_key,
             active: true,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -570,6 +642,10 @@ mod tests {
             .door_lock()
             .was_unlocked_between(Utc::now() - chrono::Duration::minutes(1), Utc::now(),));
         assert!(!state.challenges.read().unwrap().contains_key(&challenge_id));
+        let events = state.events.read().unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].action, "failed_unlock_attempt");
+        assert_eq!(events[0].member_id, "expired-challenge-member");
     }
 
     #[test]
@@ -583,6 +659,7 @@ mod tests {
             public_key_pem: member_public_key,
             active: true,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 
@@ -647,6 +724,7 @@ mod tests {
             public_key_pem: member_public_key,
             active: true,
             created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
             last_used: None,
         };
 

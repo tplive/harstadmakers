@@ -9,6 +9,7 @@ pub struct Member {
     #[serde(default)]
     pub active: bool,
     pub created_at: String,
+    pub expires_at: String,
     #[serde(default)]
     pub last_used: Option<String>,
 }
