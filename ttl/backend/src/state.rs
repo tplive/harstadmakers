@@ -455,8 +455,8 @@ mod tests {
             .unwrap_err()
             .to_string();
 
-        assert!(error.contains("expired and is deactivated"));
-        assert!(error.contains("reactivation"));
+        assert!(error.contains("utløpt og er deaktivert"));
+        assert!(error.contains("reaktivering"));
     }
 
     #[test]
