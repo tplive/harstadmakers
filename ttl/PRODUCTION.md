@@ -18,6 +18,24 @@ flowchart TB
 
 PocketBase skal ikke bindes til `0.0.0.0`. Backend kobler til PocketBase via loopback-adressen `http://127.0.0.1:8090`
 
+### Strømforsyning og backup
+
+```mermaid
+flowchart LR
+    LI["230V AC"] --> UPS["UPS med batteri"]
+    UPS -->|Backup power| PC["PC-server"]
+    UPS -->|Backup power| SW["GbE-switch"]
+    UPS -->|Backup power| WIFI["WiFi-ruter"]
+    UPS -->|Backup power| PSU["12V/5V PC PSU"]
+
+    PSU -->|5V DC| DEV["Dørkontroll"]
+    PSU -->|12V DC| RELE["Dørlås"]
+    DEV -.->|5V styrespenning | RELE["Dørlås"]
+```
+
+Alle kritiske enheter går via UPS. Det gir nettverksutstyr og servere kontinuerlig backup ved strømavbrudd. 
+
+UPS vil signalisere kontrollert shutdown til PC server, som både hindrer feil på server og sparer batteristrøm til dørlås og ruter.
 
 ## Systembrukere og mapper
 
