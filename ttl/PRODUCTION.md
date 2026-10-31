@@ -18,6 +18,63 @@ flowchart TB
 
 PocketBase skal ikke bindes til `0.0.0.0`. Backend kobler til PocketBase via loopback-adressen `http://127.0.0.1:8090`
 
+## System-oppsett
+
+Gjenbruker en fin RPI4 bygget inn i et Argon kabinett.
+
+1. Sett rett hostname, `sudo hostnamectl set-hostname mypi-server`
+2. Lag adminbruker, `sudo adduser administrator`
+3. Sett bruker til å benytte sudo, `sudo usermod -aG sudo,adm administrator`
+4. Opprett systembrukere for pocketbase, ttl-api og ttl-frontend
+  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/pocketbase svc-pocketbase`
+  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-api    svc-ttl-api`
+  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend svc-ttl-frontend`
+
+Installer Deno
+1. Installer med `curl -fsSL https://deno.land/install.sh | sh -s -- --yes`.
+2. Flytt filene 
+  * `sudo mkdir -p /opt/deno`
+  * `sudo mv ~/.deno/bin/deno /opt/deno/`
+  * `sudo ln -sf /opt/deno/bin/deno /usr/local/bin/deno  # adjust if paths differ`
+3. Gjør tilgengelig for svc-ttl-frontend brukeren:
+  * `sudo mkdir -p /srv/deno/.cache`
+  * `sudo chown -R svc-ttl-frontend:svc-ttl-frontend /srv/deno`
+4. Lag servicedefinisjoner, en for hver tjeneste (pocketbase, ttl-api, ttl-frontend) i `/etc/systemd/system/pocketbase.service`:
+
+```ini
+[Unit]
+Description=Pocketbase
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=svc-pocketbase
+Group=svc-pocketbase
+WorkingDirectory=/srv/pocketbase
+ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/pocketbase
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ## Systembrukere og mapper
 
