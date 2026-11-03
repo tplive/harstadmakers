@@ -15,7 +15,10 @@ function resolveApiBase() {
   }
 
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-  return `${protocol}://${hostname}:3000`;
+  const apiHostname = hostname === 'ttl.harstadmakers.no'
+    ? 'ttl-api.harstadmakers.no'
+    : hostname;
+  return `${protocol}://${apiHostname}:4433`;
 }
 
 import {

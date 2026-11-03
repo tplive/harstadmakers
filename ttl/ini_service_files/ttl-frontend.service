@@ -7,7 +7,7 @@ Wants=network-online.target
 User=svc-ttl-frontend
 Group=svc-ttl-frontend
 WorkingDirectory=/srv/ttl-frontend
-ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write /srv/ttl-frontend/main.ts ## MÅ HA KOMMANDOEN KLAR
+ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write jsr:@std/http/file-server --cert /home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer --key /home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key --port 443 /srv/ttl-frontend/public
 Restart=on-failure
 RestartSec=5
 
@@ -15,7 +15,7 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/srv/ttl-frontend
-ProtectHome=true
+ProtectHome=read-only
 PrivateTmp=true
 PrivateDevices=true
 ProtectKernelTunables=true
@@ -24,7 +24,8 @@ RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-CapabilityBoundingSet=
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 
