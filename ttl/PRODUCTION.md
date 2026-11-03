@@ -7,12 +7,12 @@ Dette dokumentet beskriver anbefalt produksjonsoppsett for TTL. PocketBase benyt
 ```mermaid
 flowchart TB
     client["Klient på privat wifi"]
-    frontend["Frontend / eventuell reverse proxy"]
-    backend["TTL backend :443"]
+    frontend["Frontend :443"]
+    backend["TTL backend :4433"]
     pocketbase["PocketBase<br/>127.0.0.1:8090"]
 
     client --> frontend
-    frontend --> backend
+    client --> backend
     backend --> pocketbase
 ```
 
@@ -64,11 +64,32 @@ sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend
 
 Fra repoet, kopier `ttl/public/` til `/srv/ttl-frontend/`.
 
+Frontend-tjenesten lytter over HTTPS på port 443 og bruker sertifikatene for
+`ttl.harstadmakers.no`. Backend-tjenesten lytter over HTTPS på port 4433 og
+bruker et sertifikat som dekker `ttl-api.harstadmakers.no`. Port 443 kan ikke
+brukes av begge prosessene på samme IP-adresse uten en reverse proxy.
+
+Frontend-sertifikatene som er oppgitt for denne installasjonen er:
+
+```text
+/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+```
+
+Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene, og kontroller at
+acme.sh-fornyelsen beholder denne tilgangen. `ProtectHome=read-only` i
+servicedefinisjonen gjør hjemmekatalogen synlig, men endrer ikke Unix-
+filrettigheter.
+
 ### API: Installer api-backend filene
 
 Fra repoet, Kopier `ttl/backend/configuration.json` til `/srv/ttl-api/`. Tjenesten leser
 denne filen som standard fra arbeidskatalogen. En annen konfigurasjonsfil kan
 angis med `ttl-api -c /path/to/configuration.json`.
+
+Konfigurasjonen inneholder også stier til TLS-sertifikat og privat nøkkel for
+backend. Sertifikatene kan utstedes og fornyes med `acme.sh`. Sørg for at
+`svc-ttl-api` og `svc-ttl-frontend` kan lese de relevante sertifikatfilene.
 
 Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`. 
 

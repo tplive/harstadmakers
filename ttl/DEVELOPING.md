@@ -46,18 +46,24 @@ medlemsutløp, PocketBase-tilkobling, datakatalog og bind-adresse.
 PocketBase brukes når `pocketbase_url` ikke er tom; ellers brukes JSON-filer i
 `data_dir`.
 
-Dette starter Rust-API-et på konfigurasjonens `bind_address`, som som standard
-er `0.0.0.0:3000`.
+Dette starter Rust-API-et over HTTPS på konfigurasjonens `bind_address`, som
+standardproduksjonskonfigurasjonen setter til `0.0.0.0:4433`. Sertifikat og privat nøkkel angis med
+`tls_certificate_path` og `tls_private_key_path` i `configuration.json`.
 
 ### 3. Frontend
 
 Start en lokal webserver for frontend:
 
 ```bash
-deno run --allow-net --allow-read jsr:@std/http/file-server --port 8088 public
+deno run --allow-net --allow-read jsr:@std/http/file-server \
+  --cert /path/to/fullchain.pem \
+  --key /path/to/privkey.pem \
+  --port 8088 public
 ```
 
-Dette gjør nettstedet tilgjengelig på `http://localhost:8088`
+Dette gjør nettstedet tilgjengelig på `https://localhost:8088`. I produksjon
+bruker frontend-tjenesten `https://ttl.harstadmakers.no` på port 443, mens
+API-et bruker `https://ttl-api.harstadmakers.no:4433`.
 
 ## API-eksempler
 
