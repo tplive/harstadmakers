@@ -1,0 +1,11 @@
+{
+    "server_signing_private_key_path": "/home/thomas/.ssh/id_ed25519",
+    "server_signing_public_key_path": "/home/thomas/.ssh/id_ed25519.pub",
+    "challenge_expiry_minutes": 10,
+    "default_member_expiry_days": 365,
+    "ttl_api_url": "https://ttl-api.harstadmakers.no",
+    "pocketbase_url": "http://127.0.0.1:8090",
+    "pocketbase_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJleHAiOjE3OTQxNjMyOTAsImlkIjoieGIxNTdic2VwcnNicnY4IiwicmVmcmVzaGFibGUiOmZhbHNlLCJ0eXBlIjoiYXV0aCJ9.4YkEm7L2HloNOTFaUcZjz5f_lNc4OgCs4aZnX8t3FyI",
+    "data_dir": "./data",
+    "bind_address": "0.0.0.0:3000"
+}

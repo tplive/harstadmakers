@@ -4,10 +4,7 @@ use chrono::Utc;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::Rng;
 use ssh_key::{private::KeypairData, PrivateKey};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::Path};
 
 use crate::models::Member;
 
@@ -18,18 +15,6 @@ pub struct ServerIdentity {
 }
 
 impl ServerIdentity {
-    pub fn load_from_default_ssh_dir() -> Result<Self> {
-        let home_dir = std::env::var("HOME").context("HOME is not set")?;
-        Self::load_from_ssh_dir(&PathBuf::from(home_dir).join(".ssh"))
-    }
-
-    pub fn load_from_ssh_dir(ssh_dir: &Path) -> Result<Self> {
-        let private_key_path = ssh_dir.join("id_ed25519");
-        let public_key_path = ssh_dir.join("id_ed25519.pub");
-
-        Self::load_from_files(&private_key_path, &public_key_path)
-    }
-
     pub fn load_from_files(private_key_path: &Path, public_key_path: &Path) -> Result<Self> {
         let private_key = PrivateKey::read_openssh_file(private_key_path)
             .with_context(|| format!("failed to read {}", private_key_path.display()))?;

@@ -5,9 +5,9 @@ mod pocketbase;
 pub use json_file::{FileRepositories, JsonFileEventRepository, JsonFileMemberRepository};
 pub use pocketbase::PocketBaseRepositories;
 
-use anyhow::{Context, Result};
-use std::path::PathBuf;
+use anyhow::Result;
 
+use crate::configuration::Configuration;
 use crate::models::{DoorEvent, Member};
 
 /// Trait for member persistence operations.
@@ -37,15 +37,25 @@ pub struct Repositories {
 }
 
 impl Repositories {
-    pub fn from_environment(data_dir: PathBuf) -> Result<Self> {
-        match std::env::var("POCKETBASE_URL") {
-            Ok(url) if !url.trim().is_empty() => {
-                let token = std::env::var("POCKETBASE_TOKEN")
-                    .context("POCKETBASE_TOKEN must be set when POCKETBASE_URL is configured")?;
-                Ok(PocketBaseRepositories::new(url, token)?.into())
+    pub fn from_configuration(configuration: &Configuration) -> Result<Self> {
+        if !configuration.pocketbase_url.trim().is_empty() {
+            let token = configuration.pocketbase_token.trim();
+            if token.is_empty() {
+                anyhow::bail!("pocketbase_token must be set when pocketbase_url is configured");
             }
-            _ => Ok(FileRepositories::new(data_dir)?.into()),
+            if token == "YOUR_POCKETBASE_TOKEN" {
+                anyhow::bail!(
+                    "pocketbase_token still contains the configuration placeholder; set a valid PocketBase token"
+                );
+            }
+            return Ok(PocketBaseRepositories::new(
+                configuration.pocketbase_url.clone(),
+                token.to_string(),
+            )?
+            .into());
         }
+
+        Ok(FileRepositories::new(configuration.data_dir.clone())?.into())
     }
 }
 

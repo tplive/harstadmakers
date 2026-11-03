@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::path::PathBuf;
 use tokio::net::TcpListener;
+mod configuration;
 mod crypto;
 mod door_lock;
 mod models;
@@ -8,18 +8,25 @@ mod persistence;
 mod state;
 mod web;
 
-use crate::{crypto::ServerIdentity, persistence::Repositories, state::AppState, web::app_router};
+use crate::{
+    configuration::Configuration, crypto::ServerIdentity, persistence::Repositories,
+    state::AppState, web::app_router,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let data_dir = PathBuf::from("data");
-    let server_identity = ServerIdentity::load_from_default_ssh_dir()?;
-    let repositories = Repositories::from_environment(data_dir)?;
-    let state = AppState::new(server_identity, repositories)?;
+    let configuration_path = Configuration::path_from_args(std::env::args())?;
+    let configuration = Configuration::load(&configuration_path)?;
+    let server_identity = ServerIdentity::load_from_files(
+        &configuration.server_signing_private_key_path,
+        &configuration.server_signing_public_key_path,
+    )?;
+    let repositories = Repositories::from_configuration(&configuration)?;
+    let state = AppState::new_with_configuration(server_identity, repositories, &configuration)?;
     let app = app_router(state);
 
-    let listener = TcpListener::bind("0.0.0.0:3000").await?;
-    println!("Harstad Makers backend listening on http://0.0.0.0:3000");
+    let listener = TcpListener::bind(&configuration.bind_address).await?;
+    println!("TTL API listening on http://{}", configuration.bind_address);
     axum::serve(listener, app).await?;
     Ok(())
 }

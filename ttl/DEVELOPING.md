@@ -23,7 +23,7 @@ Collections i Pocketbase heter default `members` og `door_events`. Dersom man ab
 
 Men det enkleste er å bruke standard schema. Dette er eksportert og kan importeres `fra ttl/backend/pb_schema.json`.
 
-Backendens token må ha tilgang til å lese, opprette, oppdatere og slette poster.
+Backendens token må ha tilgang til å lese, opprette og oppdatere poster.
 
 Ved registrering vil record i `members` opprettes uten `id` - ID'en autogenereres av PocketBase, returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
 
@@ -38,10 +38,23 @@ Start backend med
 
 ```bash
 cd backend
-cargo run
+cargo run -- -c configuration.json
 ```
 
-Dette starter Rust-API-et på `http://localhost:3000` på den lokale tjeneren.
+Backend leser som standard `./configuration.json`. En annen fil kan angis med
+`-c` eller `--config`:
+
+```bash
+cargo run -- --config /path/to/configuration.json
+```
+
+Konfigurasjonen styrer serverens Ed25519-nøkkelstier, challenge- og
+medlemsutløp, PocketBase-tilkobling, datakatalog og bind-adresse.
+PocketBase brukes når `pocketbase_url` ikke er tom; ellers brukes JSON-filer i
+`data_dir`.
+
+Dette starter Rust-API-et på konfigurasjonens `bind_address`, som som standard
+er `0.0.0.0:3000`.
 
 ### 3. Frontend
 

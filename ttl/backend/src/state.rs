@@ -6,9 +6,8 @@ use std::{
 };
 use uuid::Uuid;
 
-const CHALLENGE_EXPIRY_MINUTES: i64 = 5;
-
 use crate::{
+    configuration::Configuration,
     crypto::{
         create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
         ServerIdentity,
@@ -29,6 +28,8 @@ pub struct AppState {
     server_identity: ServerIdentity,
     member_repository: Arc<dyn MemberRepository>,
     event_repository: Arc<dyn EventRepository>,
+    challenge_expiry_minutes: i64,
+    default_member_expiry_days: i64,
     /// Door lock implementation - default is MockDoorLock for development
     pub door_lock: Arc<dyn DoorLock>,
 }
@@ -37,6 +38,28 @@ impl AppState {
     pub fn new(
         server_identity: ServerIdentity,
         repositories: crate::persistence::Repositories,
+    ) -> Result<Self> {
+        Self::new_with_settings(server_identity, repositories, 5, 365)
+    }
+
+    pub fn new_with_configuration(
+        server_identity: ServerIdentity,
+        repositories: crate::persistence::Repositories,
+        configuration: &Configuration,
+    ) -> Result<Self> {
+        Self::new_with_settings(
+            server_identity,
+            repositories,
+            configuration.challenge_expiry_minutes,
+            configuration.default_member_expiry_days,
+        )
+    }
+
+    fn new_with_settings(
+        server_identity: ServerIdentity,
+        repositories: crate::persistence::Repositories,
+        challenge_expiry_minutes: i64,
+        default_member_expiry_days: i64,
     ) -> Result<Self> {
         // Load members from repository
         let members = match repositories.members.load_all() {
@@ -58,6 +81,8 @@ impl AppState {
             server_identity,
             member_repository: repositories.members.into(),
             event_repository: repositories.events.into(),
+            challenge_expiry_minutes,
+            default_member_expiry_days,
             door_lock: Arc::new(MockDoorLock::new()),
         };
 
@@ -78,7 +103,8 @@ impl AppState {
             public_key_pem,
             active: false,
             created_at: Utc::now().to_rfc3339(),
-            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(self.default_member_expiry_days))
+                .to_rfc3339(),
             last_used: None,
         };
 
@@ -175,7 +201,7 @@ impl AppState {
                             member_id: member.id.clone(),
                             nonce: nonce.clone(),
                             expires_at: (Utc::now()
-                                + chrono::Duration::minutes(CHALLENGE_EXPIRY_MINUTES))
+                                + chrono::Duration::minutes(self.challenge_expiry_minutes))
                             .timestamp(),
                         },
                     );
