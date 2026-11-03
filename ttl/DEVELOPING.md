@@ -10,22 +10,15 @@
 
 ### 1. Database
 
-Backend kan enten lagre medlemsdata i `data/members.json` og hendelser i `data/door_events.json`, men man kan også bruke [Pocketbase](https://pocketbase.io). Hvis du ikke vil bruke PB er det bare å hoppe over dette steget. 
+Backend bruker [Pocketbase](https://pocketbase.io) for lagring av data.
 
-For PocketBase setter du:
+Standard schema for databasen importeres (i Pocketbase admin gui) fra `ttl/backend/pb_schema.json`.
 
-```bash
-export POCKETBASE_URL=http://127.0.0.1:8090
-export POCKETBASE_TOKEN='<server-side PocketBase token>'
-```
+En bruker i users collection har tilgang til å lese, opprette og oppdatere (men ikke slette) poster i members. Samme bruker har tilgang til å lese og opprette (men ikke oppdatere eller slette) poster i door_events.
 
-Collections i Pocketbase heter default `members` og `door_events`. Dersom man absolutt må kalle dem noe annet, kan man sette miljøvariablene `POCKETBASE_MEMBERS_COLLECTION` og `POCKETBASE_EVENTS_COLLECTION` til noe annet.
+For å konfigurere ttl-api backend for å bruke denne konfigurasjonen, bruke Impersonate user og lagre tokenet som genereres i configuration.json: `"pocketbase_token"`.
 
-Men det enkleste er å bruke standard schema. Dette er eksportert og kan importeres `fra ttl/backend/pb_schema.json`.
-
-Backendens token må ha tilgang til å lese, opprette og oppdatere poster.
-
-Ved registrering vil record i `members` opprettes uten `id` - ID'en autogenereres av PocketBase, returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
+Ved registrering av member vil ID autogenereres av PocketBase og returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
 
 I JSON-filene som opprettes når man ikke bruker database heter `member_id`. Ved lagring av dørhendelser opprettes `id` automatisk, og PocketBase sin tildelte ID brukes som `DoorEvent.id`.
 
@@ -61,8 +54,7 @@ er `0.0.0.0:3000`.
 Start en lokal webserver for frontend:
 
 ```bash
-cd public
-python3 -m http.server 8088
+deno run --allow-net --allow-read jsr:@std/http/file-server --port 8088 public
 ```
 
 Dette gjør nettstedet tilgjengelig på `http://localhost:8088`
