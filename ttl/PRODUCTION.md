@@ -20,17 +20,37 @@ PocketBase skal ikke bindes til `0.0.0.0`. Backend kobler til PocketBase via loo
 
 ## System-oppsett
 
-Gjenbruker en fin RPI4 bygget inn i et Argon kabinett.
+Dette er oppsettet på Raspberry Pi 4.
 
+### Start med Raspbian
+
+1. Basic installasjon av Raspbian, med GUI, for Pocketbase.
+2. Lag en adminkonto som du kan logge inn med for å sette opp resten.
+
+### Sett opp serveren
 1. Sett rett hostname, `sudo hostnamectl set-hostname mypi-server`
 2. Lag adminbruker, `sudo adduser administrator`
 3. Sett bruker til å benytte sudo, `sudo usermod -aG sudo,adm administrator`
-4. Opprett systembrukere for pocketbase, ttl-api og ttl-frontend
-  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/pocketbase svc-pocketbase`
-  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-api    svc-ttl-api`
-  * `sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend svc-ttl-frontend`
 
-Installer Deno
+### SSH nøkkelpar for serveren
+1. Sett opp SSH nøkkelpar først; `ssh-keygen -t ed25519 -C "your_email@example.com"`. Husk at den **offentlige** nøkkelen sendes og lagres i nettleser for alle medlemmer. Man kan se den ved å inspisere localStorage, der vil epost-adressen vises som en del av serverens offentlige nøkkel.
+2. Kopier nøkkelparet `id_ed25519` og `id_ed25519.pub` til `/srv/ttl-api/.ssh/`
+
+### Opprett systembrukere
+
+Opprett systembrukere for pocketbase, ttl-api og ttl-frontend
+
+```bash
+sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/pocketbase svc-pocketbase
+sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-api svc-ttl-api
+sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend svc-ttl-frontend
+```
+
+### Last ned repofiler
+
+`git clone git@github.com:tplive/harstadmakers.git`
+
+### Frontend: Installer Deno
 1. Installer med `curl -fsSL https://deno.land/install.sh | sh -s -- --yes`.
 2. Flytt filene 
   * `sudo mkdir -p /opt/deno`
@@ -39,42 +59,74 @@ Installer Deno
 3. Gjør tilgengelig for svc-ttl-frontend brukeren:
   * `sudo mkdir -p /srv/deno/.cache`
   * `sudo chown -R svc-ttl-frontend:svc-ttl-frontend /srv/deno`
-4. Lag servicedefinisjoner, en for hver tjeneste (pocketbase, ttl-api, ttl-frontend) i `/etc/systemd/system/pocketbase.service`:
 
-```ini
-[Unit]
-Description=Pocketbase
-After=network-online.target
-Wants=network-online.target
+### Frontend: Installer api-frontend filene
 
-[Service]
-User=svc-pocketbase
-Group=svc-pocketbase
-WorkingDirectory=/srv/pocketbase
-ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090
-Restart=on-failure
-RestartSec=5
+Fra repoet, kopier `ttl/public/` til `/srv/ttl-frontend/`.
 
-# Hardening
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/srv/pocketbase
-ProtectHome=true
-PrivateTmp=true
-PrivateDevices=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-RestrictNamespaces=true
-LockPersonality=true
-MemoryDenyWriteExecute=true
-CapabilityBoundingSet=
-SystemCallFilter=@system-service
-SystemCallErrorNumber=EPERM
+### API: Installer api-backend filene
 
-[Install]
-WantedBy=multi-user.target
+Fra repoet, Kopier `ttl/backend/configuration.json` til `/srv/ttl-api/`. Tjenesten leser
+denne filen som standard fra arbeidskatalogen. En annen konfigurasjonsfil kan
+angis med `ttl-api -c /path/to/configuration.json`.
+
+Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`. 
+
+Alternativ: Kompilèr selv med cargo. Kopier da `target/release/ttl-api` til `/srv/ttl-api`.
+
+### Installere Pocketbase
+1. Last ned [Pocketbase 0.41.1 for Linux ARM64](https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.1/pocketbase_0.41.1_linux_arm64.zip). Senere kan man oppdatere med `pocketbase update`
+1. Unzip og flytt pocketbase binærfilen til `/srv/pocketbase`.
+2. Start Pocketbase manuelt med `cd /srv/pocketbase && sudo ./pocketbase serve`. Dette gir startup-URL med token for initiell innlogging. Klikk linken. Pocketbase åpnes i nettleser og lar deg registrere brukernavn og passord for **superuser**.
+3. Database opprettes i `pb_data/`.
+4. Gå til Settings, Import collections og importer `ttl/backend/pb_schema.json` fra dette repoet.
+5. Opprett ny bruker i `users` collection for ttl-api. Gi brukeren lese og skrivetilgang til `members` og `door_events` collections.
+6. Konfigurer brukernavn og passord i `configuration.json`.
+7. Stopp Pocketbase manuell kjøring med Ctrl-C.
+8. `sudo systemctl daemon-reload`
+9.  Start systemservice:
+```bash
+sudo systemctl enable --now pocketbase
+systemctl status pocketbase   # verify it's running as the right user
+ps -o user= -C pocketbase
 ```
+
+### Servicedefinisjoner
+1. Lag servicedefinisjoner for hver tjeneste (pocketbase, ttl-api, ttl-frontend) i hhv.
+   * `/etc/systemd/system/pocketbase.service`
+   * `/etc/systemd/system/ttl-api.service`
+   * `/etc/systemd/system/ttl-frontend.service`
+
+(Maler finnes i `ini_service_files/`)
+
+## Ekstra herding av operativsystemet
+
+1. Ekstra herding av operativsystemet:
+```bash
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install unattended-upgrades ufw fail2ban -y
+sudo dpkg-reconfigure -plow unattended-upgrades
+```
+
+2. Etter å ha satt opp SSH nøkler på hosten;
+```bash
+# Firewall: only allow SSH (and any service ports you expose, e.g. 80/443)
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow OpenSSH
+sudo ufw allow 80,443/tcp   # if web servers must be reachable externally
+sudo ufw enable
+```
+3. Sett opp SSH kun med nøkler (passordløst):
+```bash
+# SSH: key-only auth
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo systemctl restart ssh
+```
+
+
+
 ### Strømforsyning og backup
 
 ```mermaid
@@ -168,7 +220,15 @@ POCKETBASE_MEMBERS_COLLECTION=members
 POCKETBASE_EVENTS_COLLECTION=door_events
 ```
 
-Backend bruker tokenverdien direkte som `Authorization`-header.
+Backend bruker tokenverdien direkte som `Authorization: <token>`. Bytt ut
+`YOUR_POCKETBASE_TOKEN` i `configuration.json` med et gyldig PocketBase-token.
+Tokenet må være et gyldig auth-token for en bruker i PocketBase. Backend sender
+det som `Authorization: Bearer <token>`. Importer den oppdaterte
+`pb_schema.json`, eller sett tilsvarende regler manuelt:
+`@request.auth.id != ""` for list/view/create/update på `members`. For
+`door_events` er list/view/create tilstrekkelig: dørhendelser behandles som
+immutable, så backend oppdaterer ikke eksisterende hendelser og utfører ikke
+DELETE-operasjoner. Backend trenger derfor ikke superbruker-token.
 
 Beskytt miljøfilen:
 
@@ -222,7 +282,7 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-`Requires=` og `After=` sørger for riktig tjenesteavhengighet. Backend har også fail-fast-adferd: den stopper dersom PocketBase ikke er tilgjengelig, tokenet mangler, eller collections/schema ikke passer modellen. `Restart=on-failure` gjør at systemd prøver på nytt når PocketBase kommer opp igjen.
+`Requires=` og `After=` sørger for riktig tjenesteavhengighet. Backend har også fail-fast-adferd: den stopper dersom PocketBase ikke er tilgjengelig eller tokenet mangler. Backend forutsetter at collections og schema allerede er korrekt konfigurert; schema kontrolleres ikke ved oppstart. `Restart=on-failure` gjør at systemd prøver på nytt når PocketBase kommer opp igjen.
 
 Aktiver tjenestene:
 
@@ -243,7 +303,7 @@ journalctl -u ttl-backend.service -f
 
 ## PocketBase-schema
 
-Backend validerer schema ved oppstart. Collections må eksistere før backend startes. Opprett collections med korrekt schema ved å importere filen `ttl/backend/pb-schema.json` fra git-repoet.
+Backend forutsetter at schema allerede er korrekt konfigurert. Collections må eksistere før backend startes. Opprett collections med korrekt schema ved å importere filen `ttl/backend/pb_schema.json` fra git-repoet.
 
 ## Oppstart og oppdatering
 

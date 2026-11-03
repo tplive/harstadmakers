@@ -1,0 +1,32 @@
+[Unit]
+Description=TTL-API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=svc-ttl-api
+Group=svc-ttl-api
+WorkingDirectory=/srv/ttl-api
+ExecStart=/srv/ttl-api/ttl-api
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/ttl-api
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

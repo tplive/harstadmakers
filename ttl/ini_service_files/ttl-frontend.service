@@ -1,0 +1,32 @@
+[Unit]
+Description=TTL-FRONTEND
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=svc-ttl-frontend
+Group=svc-ttl-frontend
+WorkingDirectory=/srv/ttl-frontend
+ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write /srv/ttl-frontend/main.ts ## MÅ HA KOMMANDOEN KLAR
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/ttl-frontend
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
