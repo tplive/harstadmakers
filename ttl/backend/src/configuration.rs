@@ -16,6 +16,8 @@ pub struct Configuration {
     pub data_dir: PathBuf,
     #[serde(default = "default_bind_address")]
     pub bind_address: String,
+    pub tls_certificate_path: PathBuf,
+    pub tls_private_key_path: PathBuf,
 }
 
 impl Configuration {
@@ -106,7 +108,9 @@ mod tests {
                 "default_member_expiry_days": 365,
                 "ttl_api_url": "http://localhost",
                 "pocketbase_url": "",
-                "pocketbase_token": ""
+                "pocketbase_token": "",
+                "tls_certificate_path": "certificate.pem",
+                "tls_private_key_path": "private-key.pem"
             }"#,
         )
         .unwrap();

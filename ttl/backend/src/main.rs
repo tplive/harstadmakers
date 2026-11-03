@@ -1,5 +1,4 @@
 use anyhow::Result;
-use tokio::net::TcpListener;
 mod configuration;
 mod crypto;
 mod door_lock;
@@ -25,8 +24,17 @@ async fn main() -> Result<()> {
     let state = AppState::new_with_configuration(server_identity, repositories, &configuration)?;
     let app = app_router(state);
 
-    let listener = TcpListener::bind(&configuration.bind_address).await?;
-    println!("TTL API listening on http://{}", configuration.bind_address);
-    axum::serve(listener, app).await?;
+    let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+        &configuration.tls_certificate_path,
+        &configuration.tls_private_key_path,
+    )
+    .await?;
+    println!(
+        "TTL API listening on https://{}",
+        configuration.bind_address
+    );
+    axum_server::bind_rustls(configuration.bind_address.parse()?, tls_config)
+        .serve(app.into_make_service())
+        .await?;
     Ok(())
 }
