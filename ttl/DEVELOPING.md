@@ -61,28 +61,23 @@ deno run --allow-net --allow-read jsr:@std/http/file-server \
   --port 8088 public
 ```
 
-Dette gjør nettstedet tilgjengelig på `https://localhost:8088`. I produksjon
-bruker frontend-tjenesten `https://ttl.harstadmakers.no` på port 443, mens
-API-et bruker `https://ttl-api.harstadmakers.no:4433`.
+Port 443 krever normalt root eller `CAP_NET_BIND_SERVICE` på Linux. Kommandoen
+over kjører bare Deno med root-rettigheter; stopp den med Ctrl-C. Dette gjør
+nettstedet tilgjengelig på `https://ttl.harstadmakers.no` når DNS-navnet peker
+til denne maskinen. API-et bruker `https://ttl-api.harstadmakers.no:4433`.
 
 ## API-eksempler
 
 Helsetest:
 
 ```bash
-curl http://localhost:3000/health
-```
-
-List medlemmer:
-
-```bash
-curl http://localhost:3000/api/members
+curl -k https://ttl-api.harstadmakers.no:4433/health
 ```
 
 Be om en challenge:
 
 ```bash
-curl -X POST http://localhost:3000/api/challenge \
+curl -k -X POST https://ttl-api.harstadmakers.no:4433/api/challenge \
   -H 'Content-Type: application/json' \
   -d '{"member_id":"demo-member","server_challenge":"<browser-generated-nonce>","client_nonce":"<client-nonce>","client_nonce_signature":"<Ed25519-signature>"}'
 ```
@@ -90,7 +85,7 @@ curl -X POST http://localhost:3000/api/challenge \
 Registrer en nettleser og lær serverens offentlige nøkkel:
 
 ```bash
-curl -X POST http://localhost:3000/api/members \
+curl -k -X POST https://ttl-api.harstadmakers.no:4433/api/members \
   -H 'Content-Type: application/json' \
   -d '{
     "name":"Jane Maker",
@@ -109,7 +104,7 @@ unlock endpoint as `server_nonce_signature`.
 Lås opp døren etter at mobilnettleseren har verifisert server-signaturen og signert server-nonce:
 
 ```bash
-curl -X POST http://localhost:3000/api/door/unlock \
+curl -k -X POST https://ttl-api.harstadmakers.no:4433/api/door/unlock \
   -H 'Content-Type: application/json' \
   -d '{
     "member_id":"demo-member",

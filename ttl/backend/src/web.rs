@@ -20,10 +20,7 @@ pub fn app_router(state: AppState) -> Router {
 
     Router::new()
         .route("/health", get(health))
-        .route(
-            "/api/members",
-            get(list_members_handler).post(create_member_handler),
-        )
+        .route("/api/members", post(create_member_handler))
         .route("/api/challenge", post(challenge_handler))
         .route("/api/door/unlock", post(unlock_handler))
         .layer(cors)
@@ -35,10 +32,6 @@ async fn health() -> impl IntoResponse {
         StatusCode::OK,
         Json(serde_json::json!({"status": "ok", "service": "harstad-makers"})),
     )
-}
-
-async fn list_members_handler(State(state): State<AppState>) -> impl IntoResponse {
-    (StatusCode::OK, Json(state.list_members()))
 }
 
 async fn create_member_handler(

@@ -122,10 +122,6 @@ impl AppState {
         })
     }
 
-    pub fn list_members(&self) -> Vec<Member> {
-        self.members.read().unwrap().clone()
-    }
-
     /// Reload members from the repository to pick up external changes
     /// Merges changes from file into the in-memory cache without removing
     /// members that only exist in memory (e.g., created during tests)
