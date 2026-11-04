@@ -65,8 +65,8 @@ sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend
 Fra repoet, kopier `ttl/public/` til `/srv/ttl-frontend/`.
 
 Frontend-tjenesten lytter over HTTPS på port 443 og bruker sertifikatene for
-`ttl.harstadmakers.no`. Backend-tjenesten lytter over HTTPS på port 4433 og
-bruker et sertifikat som dekker `ttl-api.harstadmakers.no`. Port 443 kan ikke
+`ttl.harstadmakers.no`. Backend-tjenesten lytter over HTTPS på port 4433 og bruker samme SAN-sertifikat,
+som dekker både `ttl.harstadmakers.no` og `ttl-api.harstadmakers.no`. Port 443 kan ikke
 brukes av begge prosessene på samme IP-adresse uten en reverse proxy.
 
 Frontend-sertifikatene som er oppgitt for denne installasjonen er:
@@ -76,10 +76,7 @@ Frontend-sertifikatene som er oppgitt for denne installasjonen er:
 /home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
 ```
 
-Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene, og kontroller at
-acme.sh-fornyelsen beholder denne tilgangen. `ProtectHome=read-only` i
-servicedefinisjonen gjør hjemmekatalogen synlig, men endrer ikke Unix-
-filrettigheter.
+Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene. 
 
 ### API: Installer api-backend filene
 
