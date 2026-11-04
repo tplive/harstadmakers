@@ -18,6 +18,14 @@ pub struct Configuration {
     pub bind_address: String,
     pub tls_certificate_path: PathBuf,
     pub tls_private_key_path: PathBuf,
+    #[serde(default = "default_relay_gpio_pin")]
+    pub relay_gpio_pin: u8,
+    #[serde(default = "default_hall_sensor_gpio_pin")]
+    pub hall_sensor_gpio_pin: u8,
+    #[serde(default = "default_unlock_duration_ms")]
+    pub unlock_duration_ms: u64,
+    #[serde(default)]
+    pub gpio_enabled: bool,
 }
 
 impl Configuration {
@@ -66,6 +74,18 @@ fn default_data_dir() -> PathBuf {
 
 fn default_bind_address() -> String {
     "0.0.0.0:3000".to_string()
+}
+
+fn default_relay_gpio_pin() -> u8 {
+    18
+}
+
+fn default_hall_sensor_gpio_pin() -> u8 {
+    23
+}
+
+fn default_unlock_duration_ms() -> u64 {
+    1_000
 }
 
 #[cfg(test)]
@@ -117,5 +137,9 @@ mod tests {
 
         assert_eq!(configuration.data_dir, PathBuf::from("data"));
         assert_eq!(configuration.bind_address, "0.0.0.0:3000");
+        assert_eq!(configuration.relay_gpio_pin, 18);
+        assert_eq!(configuration.hall_sensor_gpio_pin, 23);
+        assert_eq!(configuration.unlock_duration_ms, 1_000);
+        assert!(!configuration.gpio_enabled);
     }
 }

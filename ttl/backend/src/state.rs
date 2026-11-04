@@ -12,7 +12,7 @@ use crate::{
         create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
         ServerIdentity,
     },
-    door_lock::{DoorLock, MockDoorLock},
+    door_lock::{DoorLock, HardwareDoorLock, MockDoorLock},
     models::{
         ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, Member, NewMemberRequest,
         RegistrationResponse, UnlockRequest, UnlockResponse,
@@ -39,7 +39,13 @@ impl AppState {
         server_identity: ServerIdentity,
         repositories: crate::persistence::Repositories,
     ) -> Result<Self> {
-        Self::new_with_settings(server_identity, repositories, 5, 365)
+        Self::new_with_settings(
+            server_identity,
+            repositories,
+            5,
+            365,
+            Arc::new(MockDoorLock::new()),
+        )
     }
 
     pub fn new_with_configuration(
@@ -47,11 +53,22 @@ impl AppState {
         repositories: crate::persistence::Repositories,
         configuration: &Configuration,
     ) -> Result<Self> {
+        let door_lock: Arc<dyn DoorLock> = if configuration.gpio_enabled {
+            Arc::new(HardwareDoorLock::new(
+                configuration.relay_gpio_pin,
+                configuration.hall_sensor_gpio_pin,
+                std::time::Duration::from_millis(configuration.unlock_duration_ms),
+            )?)
+        } else {
+            Arc::new(MockDoorLock::new())
+        };
+
         Self::new_with_settings(
             server_identity,
             repositories,
             configuration.challenge_expiry_minutes,
             configuration.default_member_expiry_days,
+            door_lock,
         )
     }
 
@@ -60,6 +77,7 @@ impl AppState {
         repositories: crate::persistence::Repositories,
         challenge_expiry_minutes: i64,
         default_member_expiry_days: i64,
+        door_lock: Arc<dyn DoorLock>,
     ) -> Result<Self> {
         // Load members from repository
         let members = match repositories.members.load_all() {
@@ -83,7 +101,7 @@ impl AppState {
             event_repository: repositories.events.into(),
             challenge_expiry_minutes,
             default_member_expiry_days,
-            door_lock: Arc::new(MockDoorLock::new()),
+            door_lock,
         };
 
         state.persist_members()?;

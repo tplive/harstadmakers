@@ -9,5 +9,9 @@
     "data_dir": "./data",
     "bind_address": "0.0.0.0:4433",
     "tls_certificate_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
-    "tls_private_key_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key"
+    "tls_private_key_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key",
+    "relay_gpio_pin": 18,
+    "hall_sensor_gpio_pin": 23,
+    "unlock_duration_ms": 1000,
+    "gpio_enabled": false
 }

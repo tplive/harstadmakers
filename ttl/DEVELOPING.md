@@ -42,7 +42,17 @@ cargo run -- --config /path/to/configuration.json
 ```
 
 Konfigurasjonen styrer serverens Ed25519-nøkkelstier, challenge- og
-medlemsutløp, PocketBase-tilkobling, datakatalog og bind-adresse.
+medlemsutløp, PocketBase-tilkobling, datakatalog, bind-adresse og GPIO:
+
+- `relay_gpio_pin` er BCM-pinnen som driver reléet og starter lav.
+- `hall_sensor_gpio_pin` er BCM-pinnen for hall-sensoren. Den konfigureres med
+  intern pull-up og leses lav når døren er åpen.
+- `unlock_duration_ms` angir hvor lenge reléet holdes høyt ved opplåsing.
+- `gpio_enabled` må settes til `true` på Raspberry Pi for å aktivere GPIO.
+  Den bør være `false` på utviklingsmaskiner som ikke har Raspberry Pi-maskinvare.
+
+Raspberry Pi GPIO-signalet er 3,3 V (ikke 5 V) og er ikke 5 V-tolerant.
+Relémodulen må derfor ha en 3,3 V-kompatibel inngang eller egnet nivåtilpasning.
 PocketBase brukes når `pocketbase_url` ikke er tom; ellers brukes JSON-filer i
 `data_dir`.
 
