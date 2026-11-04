@@ -1654,6 +1654,7 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "rand",
+ "rustls",
  "serde",
  "serde_json",
  "ssh-key",

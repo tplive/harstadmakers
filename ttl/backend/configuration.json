@@ -8,6 +8,6 @@
     "pocketbase_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJleHAiOjE3OTQxNjMyOTAsImlkIjoieGIxNTdic2VwcnNicnY4IiwicmVmcmVzaGFibGUiOmZhbHNlLCJ0eXBlIjoiYXV0aCJ9.4YkEm7L2HloNOTFaUcZjz5f_lNc4OgCs4aZnX8t3FyI",
     "data_dir": "./data",
     "bind_address": "0.0.0.0:4433",
-    "tls_certificate_path": "/etc/letsencrypt/live/ttl-api.harstadmakers.no/fullchain.pem",
-    "tls_private_key_path": "/etc/letsencrypt/live/ttl-api.harstadmakers.no/privkey.pem"
+    "tls_certificate_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
+    "tls_private_key_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key"
 }

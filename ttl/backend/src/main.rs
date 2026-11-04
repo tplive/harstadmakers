@@ -14,6 +14,9 @@ use crate::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| anyhow::anyhow!("failed to install the Rustls ring crypto provider"))?;
     let configuration_path = Configuration::path_from_args(std::env::args())?;
     let configuration = Configuration::load(&configuration_path)?;
     let server_identity = ServerIdentity::load_from_files(
