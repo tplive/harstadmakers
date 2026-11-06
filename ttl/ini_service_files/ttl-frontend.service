@@ -7,14 +7,15 @@ Wants=network-online.target
 User=svc-ttl-frontend
 Group=svc-ttl-frontend
 WorkingDirectory=/srv/ttl-frontend
-ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write jsr:@std/http/file-server --cert /srv/ttl-certs/fullchain.cer --key /srv/ttl-certs/ttl.harstadmakers.no.key --port 443 /srv/ttl-frontend/public
+Environment=DENO_DIR=/srv/deno/.cache
+ExecStart=/srv/deno/deno run --allow-net --allow-read --allow-env --allow-write jsr:@std/http/file-server --cert /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer --key /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key --port 443 /srv/ttl-frontend/public
 Restart=on-failure
 RestartSec=5
 
 # Hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/srv/ttl-frontend
+ReadWritePaths=/srv/ttl-frontend /srv/deno/.cache
 ProtectHome=read-only
 PrivateTmp=true
 PrivateDevices=true
@@ -23,7 +24,6 @@ ProtectControlGroups=true
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 SystemCallFilter=@system-service

@@ -8,6 +8,8 @@ User=svc-pocketbase
 Group=svc-pocketbase
 WorkingDirectory=/srv/pocketbase
 ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090
+StandardOutput=journal
+StandardError=journal
 Restart=on-failure
 RestartSec=5
 

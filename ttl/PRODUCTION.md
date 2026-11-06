@@ -54,17 +54,26 @@ sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend
 
 ### Frontend: Installer Deno
 
-1. Installer med `curl -fsSL https://deno.land/install.sh | sh -s -- --yes`.
-2. Flytt filene
+1. Installer Deno i en midlertidig katalog:
 
-* `sudo mkdir -p /opt/deno`
-* `sudo mv ~/.deno/bin/deno /opt/deno/`
-* `sudo ln -sf /opt/deno/bin/deno /usr/local/bin/deno  # adjust if paths differ`
+```bash
+tmp_dir="$(mktemp -d)"
+curl -fsSL https://deno.land/install.sh | DENO_INSTALL="$tmp_dir" sh -s -- --yes
+sudo install -d -o root -g root -m 0755 /srv/deno
+sudo install -o root -g root -m 0755 "$tmp_dir/bin/deno" /srv/deno/deno
+rm -rf "$tmp_dir"
+```
 
-3. Gjør tilgengelig for svc-ttl-frontend brukeren:
+2. Gjør Deno-cachen tilgjengelig for `svc-ttl-frontend`:
 
-* `sudo mkdir -p /srv/deno/.cache`
-* `sudo chown -R svc-ttl-frontend:svc-ttl-frontend /srv/deno`
+```bash
+sudo install -d -o svc-ttl-frontend -g svc-ttl-frontend -m 0750 /srv/deno/.cache
+sudo -u svc-ttl-frontend /srv/deno/deno --version
+```
+
+`ttl-frontend.service` bruker `/srv/deno/deno` direkte og setter `DENO_DIR` til
+`/srv/deno/.cache`. Selve binærfilen kan derfor eies av `root` og være lesbar og
+kjørbar for alle, mens bare tjenestebrukeren får skrive til cachen.
 
 ### Frontend: Installer api-frontend filene
 
@@ -266,6 +275,8 @@ User=pocketbase
 Group=pocketbase
 WorkingDirectory=/opt/pocketbase
 ExecStart=/opt/pocketbase/pocketbase serve --http=127.0.0.1:8090
+StandardOutput=journal
+StandardError=journal
 Restart=on-failure
 RestartSec=5
 

@@ -1,18 +1,30 @@
-# Utstede sertifikat for TTL
+# Utstede og fornye sertifikat for TTL
 
-* Vi benytter [Domeneshop](https://domene.shop) som DNS provider for vårt domene.
-* Vi benytter [acme.sh](https://github.com/acmesh-official/acme.sh) som automatiseringsverktøy.
+Vi bruker [Domeneshop](https://domene.shop) som DNS-leverandør og
+[acme.sh](https://github.com/acmesh-official/acme.sh) for Let's Encrypt-
+sertifikatet.
 
-Acme.sh [kan installeres til valgfri katalog](https://github.com/acmesh-official/acme.sh/wiki/How-to-install#4-advanced-installation) med `--home` parameteret for å spesifisere katalog. Man kan også sette separate kataloger for konfigurasjon og sertifikater med  `--config-home` og `--cert-home`.
-Install the tool with:
+`acme.sh` installeres og kjøres av administratorbrukeren `my-admin-user`. Både
+acme.sh-data og sertifikatene ligger under `/opt/acme.sh`:
+
+```text
+/opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+/opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+```
+
+Backend og frontend kjører som `svc-ttl-api` og `svc-ttl-frontend`. De trenger
+bare lesetilgang til de to sertifikatfilene.
+
+## Installer acme.sh
+
+Kjør installasjonen som `my-admin-user`, uten `sudo`:
+
 ```bash
-git clone --depth 1 https://github.com/acmesh-official/acme.sh.git
-cd acme.sh
-./acme.sh --install  \
---home /opt/acme.sh \ 
---config-home /opt/acme.sh \
---cert-home  /srv/certs \
---accountemail  "my@example.com"
+git clone --depth 1 https://github.com/acmesh-official/acme.sh.git /tmp/acme.sh
+cd /tmp/acme.sh
+./acme.sh --install \
+  --home /opt/acme.sh \
+  --accountemail "my@example.com"
 ```
 
 1. Logg inn på [Domeneshop](https://domene.shop) med din konto.
@@ -21,89 +33,127 @@ cd acme.sh
 4. "To generate credentials, visit this page after logging in to the control panel on our website: <https://www.domeneshop.no/admin?view=api>"
 5. Noter token, secret og timestamp for utløp.
 6. For manuelt å utstede sertifikat, kjør:
+Kontroller installasjonen:
 
 ```bash
-sudo groupadd --system ttl-certs
-sudo usermod --append --groups ttl-certs svc-ttl-api
-sudo usermod --append --groups ttl-certs svc-ttl-frontend
-
-sudo install --directory --owner=root --group=ttl-certs --mode=0750 \
-  /srv/ttl-certs
+/opt/acme.sh/acme.sh --home /opt/acme.sh --version
+/opt/acme.sh/acme.sh --home /opt/acme.sh --list
 ```
 
-The service users must be restarted, or a new login session must be started,
-before their supplementary `ttl-certs` group membership is visible.
+acme.sh oppretter normalt en cron-jobb for brukeren `my-admin-user`. Det er denne
+jobben som senere fornyer sertifikatet.
 
-## Install acme.sh under `/srv`
+## Utsted sertifikatet
 
-Install acme.sh as root so its renewal timer/cron job can write to
-`/srv/.acme.sh` and install the renewed certificate files:
-
-```bash
-sudo mkdir -p /srv/.acme.sh
-sudo chown root:root /srv/.acme.sh
-sudo chmod 700 /srv/.acme.sh
-
-curl https://get.acme.sh | sudo sh -s email=my@example.com \
-  --home /srv/.acme.sh
-```
-
-Confirm that the installation uses the requested home directory:
-
-```bash
-sudo /srv/.acme.sh/acme.sh --home /srv/.acme.sh --version
-sudo /srv/.acme.sh/acme.sh --home /srv/.acme.sh --list
-```
-
-The DNS API credentials are private. If they are stored as a local JSON file
-for the DNS API helper, keep that file inside the acme.sh directory so the
-service users cannot read it:
-
-```bash
-sudo install --owner=root --group=root --mode=0600 \
-  /path/to/domeneshop_api.json /srv/.acme.sh/domeneshop_api.json
-```
-
-## Issue the certificate
-
-Log in to Domeneshop and follow the
-[Domeneshop DNS API instructions](https://github.com/acme.sh/acme.sh/wiki/dnsapi2#85-use-domeneshop-dns-api-to-automatically-issue-a-cert).
-The API token and secret are available from
+Følg [Domeneshop DNS API-instruksjonene](https://github.com/acme.sh/acme.sh/wiki/dnsapi2#85-use-domeneshop-dns-api-to-automatically-issue-a-cert).
+API-token og secret hentes fra
 <https://www.domeneshop.no/admin?view=api>.
 
-For a manual issuance, export the credentials only in the root shell:
+Ikke lagre credentials i repositoryet. Eksporter dem bare i shell-et som
+brukeren `my-admin-user`:
 
 ```bash
-sudo -i
 export DOMENESHOP_Token=your_token_here
 export DOMENESHOP_Secret=your_secret_here
 
-/srv/.acme.sh/acme.sh --home /srv/.acme.sh \
+/opt/acme.sh/acme.sh --home /opt/acme.sh \
   --issue --dns dns_domeneshop \
   -d ttl.harstadmakers.no \
   -d ttl-api.harstadmakers.no
 ```
 
-7. Vi beholder data lokalt på TTL serveren. I admin brukerens hjemmekatalog; lag `domeneshop_api.json`:
+## Gi tjenestene lesetilgang
 
-## Install renewed certificates into `/srv/ttl-certs`
-
-Use `--install-cert` rather than pointing the services directly at files in
-`/srv/.acme.sh`. This gives the services a stable path and lets acme.sh copy
-new files into place on every renewal:
+Opprett en gruppe for sertifikatlesing og legg begge systembrukerne i gruppen:
 
 ```bash
-/srv/.acme.sh/acme.sh --home /srv/.acme.sh \
-  --install-cert -d ttl.harstadmakers.no \
-  --fullchain-file /srv/ttl-certs/fullchain.cer \
-  --key-file /srv/ttl-certs/ttl.harstadmakers.no.key \
-  --reloadcmd \
-    "chown root:ttl-certs /srv/ttl-certs/fullchain.cer /srv/ttl-certs/ttl.harstadmakers.no.key && \
-     chmod 0644 /srv/ttl-certs/fullchain.cer && \
-     chmod 0640 /srv/ttl-certs/ttl.harstadmakers.no.key && \
-     systemctl try-restart ttl-api.service ttl-frontend.service"
+sudo groupadd --system ttl-certs
+sudo usermod --append --groups ttl-certs svc-ttl-api
+sudo usermod --append --groups ttl-certs svc-ttl-frontend
+sudo usermod --append --groups ttl-certs my-admin-user
 ```
 
-8. Utløpsdatoen må holdes oppdatert, da Discord botten vi varsle fra og med 30 dager før utløp. 
+Gi gruppen tilgang til domenekatalogen og sertifikatfilene:
 
-MERK! Sertifikatene fornyes langt oftere, for tiden hver 90. dag.
+```bash
+sudo chgrp ttl-certs /opt/acme.sh/ttl.harstadmakers.no_ecc
+sudo chmod 0750 /opt/acme.sh/ttl.harstadmakers.no_ecc
+
+sudo chgrp ttl-certs \
+  /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer \
+  /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+sudo chmod 0640 \
+  /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer \
+  /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+```
+
+`my-admin-user` må kunne traversere `/opt/acme.sh`, mens servicebrukerne skal ikke
+ha generell tilgang til acme.sh-dataene. Bruk en ACL på toppkatalogen:
+
+```bash
+sudo chmod 0700 /opt/acme.sh
+sudo setfacl -m u:my-admin-user:rwx,g:ttl-certs:x /opt/acme.sh
+```
+
+Installer `acl` først hvis `setfacl` ikke finnes:
+
+```bash
+sudo apt install acl
+```
+
+Kontroller at begge tjenestene kan lese sertifikatene:
+
+```bash
+sudo -u svc-ttl-api test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+sudo -u svc-ttl-api test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+sudo -u svc-ttl-frontend test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+sudo -u svc-ttl-frontend test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+```
+
+## Installer fornyelseshook
+
+Registrer de eksisterende sertifikatfilene som installasjonsmål. Ved hver
+vellykkede fornyelse oppdaterer acme.sh filene, setter lesetilgang på nytt og
+starter tjenestene:
+
+```bash
+/opt/acme.sh/acme.sh --home /opt/acme.sh \
+  --install-cert -d ttl.harstadmakers.no \
+  --fullchain-file /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer \
+  --key-file /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key \
+  --reloadcmd \
+    "chgrp ttl-certs /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key && \
+     chmod 0640 /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key && \
+     systemctl restart ttl-api.service ttl-frontend.service"
+```
+
+`systemctl restart` i hooken må kjøres med tilstrekkelige rettigheter. Hvis
+cron-jobben kjører som `my-admin-user`, gi kun denne kommandoen tilgang via sudo:
+
+```bash
+sudo tee /etc/sudoers.d/ttl-cert-renew >/dev/null <<'EOF'
+my-admin-user ALL=(root) NOPASSWD: /usr/bin/systemctl restart ttl-api.service ttl-frontend.service
+EOF
+sudo chmod 0440 /etc/sudoers.d/ttl-cert-renew
+sudo visudo --check
+```
+
+I så fall skal hookens siste kommando være:
+
+```bash
+sudo -n systemctl restart ttl-api.service ttl-frontend.service
+```
+
+Kontroller og test fornyelsesjobben:
+
+```bash
+/opt/acme.sh/acme.sh --home /opt/acme.sh --cron --dry-run
+sudo journalctl -u ttl-api.service -u ttl-frontend.service -n 100 --no-pager
+```
+
+Konfigurasjonen og frontend-unit-filen skal bruke de samme filene:
+
+```text
+/opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+/opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+```
