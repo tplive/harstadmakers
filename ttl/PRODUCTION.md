@@ -75,14 +75,47 @@ Frontend-tjenesten lytter over HTTPS på port 443 og bruker sertifikatene for
 som dekker både `ttl.harstadmakers.no` og `ttl-api.harstadmakers.no`. Port 443 kan ikke
 brukes av begge prosessene på samme IP-adresse uten en reverse proxy.
 
-Frontend-sertifikatene som er oppgitt for denne installasjonen er:
+Begge tjenestene bruker sertifikatfilene i `/srv/ttl-certs/`:
 
 ```text
-/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
-/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+/srv/ttl-certs/fullchain.cer
+/srv/ttl-certs/ttl.harstadmakers.no.key
 ```
 
 Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene.
+Opprett en egen gruppe for sertifikatene, slik at ingen av tjenestene trenger
+lesetilgang til `/home/thomas`:
+
+```bash
+sudo groupadd --system ttl-certs
+sudo usermod -aG ttl-certs svc-ttl-api
+sudo usermod -aG ttl-certs svc-ttl-frontend
+sudo install -d -o root -g ttl-certs -m 750 /srv/ttl-certs
+```
+
+Installer sertifikatet fra `acme.sh` til denne katalogen. `--install-cert` er
+viktig fordi filene i `~/.acme.sh/` er interne arbeidsfiler og ikke skal brukes
+direkte av systemtjenestene:
+
+```bash
+sudo /home/thomas/.acme.sh/acme.sh --install-cert \
+  -d ttl.harstadmakers.no \
+  --fullchain-file /srv/ttl-certs/fullchain.cer \
+  --key-file /srv/ttl-certs/ttl.harstadmakers.no.key \
+  --reloadcmd "systemctl try-restart ttl-api.service ttl-frontend.service"
+sudo chown root:ttl-certs /srv/ttl-certs/fullchain.cer /srv/ttl-certs/ttl.harstadmakers.no.key
+sudo chmod 640 /srv/ttl-certs/ttl.harstadmakers.no.key
+sudo chmod 644 /srv/ttl-certs/fullchain.cer
+```
+
+`acme.sh` registrerer automatisk en cron-jobb/systemd-timer for fornyelse.
+`--reloadcmd` kjører etter en vellykket fornyelse, slik at begge tjenestene
+leser det nye sertifikatet. Kontroller installasjonen med:
+
+```bash
+sudo -u svc-ttl-api test -r /srv/ttl-certs/ttl.harstadmakers.no.key
+sudo -u svc-ttl-frontend test -r /srv/ttl-certs/ttl.harstadmakers.no.key
+```
 
 ### API: Installer api-backend filene
 
@@ -90,9 +123,9 @@ Fra repoet, Kopier `ttl/backend/configuration.json` til `/srv/ttl-api/`. Tjenest
 denne filen som standard fra arbeidskatalogen. En annen konfigurasjonsfil kan
 angis med `ttl-api -c /path/to/configuration.json`.
 
-Konfigurasjonen inneholder også stier til TLS-sertifikat og privat nøkkel for
-backend. Sertifikatene kan utstedes og fornyes med `acme.sh`. Sørg for at
-`svc-ttl-api` og `svc-ttl-frontend` kan lese de relevante sertifikatfilene.
+Konfigurasjonen bruker `/srv/ttl-certs/fullchain.cer` og
+`/srv/ttl-certs/ttl.harstadmakers.no.key` for TLS. Sertifikatene fornyes
+automatisk av `acme.sh` og kopieres til disse filene etter hver fornyelse.
 
 Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`.
 

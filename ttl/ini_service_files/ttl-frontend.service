@@ -7,7 +7,7 @@ Wants=network-online.target
 User=svc-ttl-frontend
 Group=svc-ttl-frontend
 WorkingDirectory=/srv/ttl-frontend
-ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write jsr:@std/http/file-server --cert /etc/ttl-certs/fullchain.cer --key /etc/ttl-certs/ttl.harstadmakers.no.key --port 443 /srv/ttl-frontend/public
+ExecStart=/usr/bin/deno run --allow-net --allow-read --allow-env --allow-write jsr:@std/http/file-server --cert /srv/ttl-certs/fullchain.cer --key /srv/ttl-certs/ttl.harstadmakers.no.key --port 443 /srv/ttl-frontend/public
 Restart=on-failure
 RestartSec=5
 
