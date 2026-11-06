@@ -17,6 +17,7 @@ use crate::{
         ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, Member, NewMemberRequest,
         RegistrationResponse, UnlockRequest, UnlockResponse,
     },
+    notifications::{DiscordNotifier, NotificationChannel},
     persistence::{EventRepository, MemberRepository},
 };
 
@@ -28,6 +29,7 @@ pub struct AppState {
     server_identity: ServerIdentity,
     member_repository: Arc<dyn MemberRepository>,
     event_repository: Arc<dyn EventRepository>,
+    notifications: Arc<DiscordNotifier>,
     challenge_expiry_minutes: i64,
     default_member_expiry_days: i64,
     /// Door lock implementation - default is MockDoorLock for development
@@ -45,6 +47,7 @@ impl AppState {
             5,
             365,
             Arc::new(MockDoorLock::new()),
+            DiscordNotifier::default(),
         )
     }
 
@@ -69,6 +72,7 @@ impl AppState {
             configuration.challenge_expiry_minutes,
             configuration.default_member_expiry_days,
             door_lock,
+            DiscordNotifier::from_configuration(configuration),
         )
     }
 
@@ -78,6 +82,7 @@ impl AppState {
         challenge_expiry_minutes: i64,
         default_member_expiry_days: i64,
         door_lock: Arc<dyn DoorLock>,
+        notifications: DiscordNotifier,
     ) -> Result<Self> {
         // Load members from repository
         let members = match repositories.members.load_all() {
@@ -99,6 +104,7 @@ impl AppState {
             server_identity,
             member_repository: repositories.members.into(),
             event_repository: repositories.events.into(),
+            notifications: Arc::new(notifications),
             challenge_expiry_minutes,
             default_member_expiry_days,
             door_lock,
@@ -131,6 +137,13 @@ impl AppState {
             let mut members = self.members.write().unwrap();
             members.push(member.clone());
         }
+
+        let _ = self.notifications.notify_with_kind(
+            NotificationChannel::Access,
+            crate::notifications::NotificationKind::Registration,
+            "New TTL registration",
+            &format!("{} ({}) registered for access.", member.name, member.email),
+        );
 
         Ok(RegistrationResponse {
             member,
@@ -312,7 +325,14 @@ impl AppState {
         };
 
         let event = self.event_repository.save_event(&event)?;
-        self.events.write().unwrap().push(event);
+        self.events.write().unwrap().push(event.clone());
+
+        let _ = self.notifications.notify_with_kind(
+            NotificationChannel::Admin,
+            crate::notifications::NotificationKind::DoorEvent,
+            "Door event",
+            &format!("Door unlock granted for {} at {}.", member.name, event.timestamp),
+        );
 
         self.persist_members()?;
 
@@ -347,7 +367,17 @@ impl AppState {
             timestamp: Utc::now().to_rfc3339(),
         };
         let event = self.event_repository.save_event(&event)?;
-        self.events.write().unwrap().push(event);
+        self.events.write().unwrap().push(event.clone());
+        let _ = self.notifications.notify_with_kind(
+            NotificationChannel::Admin,
+            crate::notifications::NotificationKind::Error,
+            "Failed unlock attempt",
+            &format!(
+                "A failed unlock attempt was recorded for member {} at {}.",
+                member_id,
+                event.timestamp
+            ),
+        );
         Ok(())
     }
 

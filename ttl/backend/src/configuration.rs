@@ -12,6 +12,10 @@ pub struct Configuration {
     pub ttl_api_url: String,
     pub pocketbase_url: String,
     pub pocketbase_token: String,
+    #[serde(default)]
+    pub discord_admin_webhook_url: Option<String>,
+    #[serde(default)]
+    pub discord_access_webhook_url: Option<String>,
     #[serde(default = "default_data_dir")]
     pub data_dir: PathBuf,
     #[serde(default = "default_bind_address")]
@@ -141,5 +145,36 @@ mod tests {
         assert_eq!(configuration.hall_sensor_gpio_pin, 23);
         assert_eq!(configuration.unlock_duration_ms, 1_000);
         assert!(!configuration.gpio_enabled);
+        assert_eq!(configuration.discord_admin_webhook_url, None);
+        assert_eq!(configuration.discord_access_webhook_url, None);
+    }
+
+    #[test]
+    fn accepts_discord_webhook_configuration() {
+        let configuration: Configuration = serde_json::from_str(
+            r#"{
+                "server_signing_private_key_path": "private",
+                "server_signing_public_key_path": "public",
+                "challenge_expiry_minutes": 5,
+                "default_member_expiry_days": 365,
+                "ttl_api_url": "http://localhost",
+                "pocketbase_url": "",
+                "pocketbase_token": "",
+                "tls_certificate_path": "certificate.pem",
+                "tls_private_key_path": "private-key.pem",
+                "discord_admin_webhook_url": "https://discord.example.com/admin",
+                "discord_access_webhook_url": "https://discord.example.com/access"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            configuration.discord_admin_webhook_url.as_deref(),
+            Some("https://discord.example.com/admin")
+        );
+        assert_eq!(
+            configuration.discord_access_webhook_url.as_deref(),
+            Some("https://discord.example.com/access")
+        );
     }
 }

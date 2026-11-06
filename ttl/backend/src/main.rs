@@ -3,6 +3,7 @@ mod configuration;
 mod crypto;
 mod door_lock;
 mod models;
+mod notifications;
 mod persistence;
 mod state;
 mod web;

@@ -28,11 +28,13 @@ Dette er oppsettet på Raspberry Pi 4.
 2. Lag en adminkonto som du kan logge inn med for å sette opp resten.
 
 ### Sett opp serveren
+
 1. Sett rett hostname, `sudo hostnamectl set-hostname mypi-server`
 2. Lag adminbruker, `sudo adduser administrator`
 3. Sett bruker til å benytte sudo, `sudo usermod -aG sudo,adm administrator`
 
 ### SSH nøkkelpar for serveren
+
 1. Sett opp SSH nøkkelpar først; `ssh-keygen -t ed25519 -C "your_email@example.com"`. Husk at den **offentlige** nøkkelen sendes og lagres i nettleser for alle medlemmer. Man kan se den ved å inspisere localStorage, der vil epost-adressen vises som en del av serverens offentlige nøkkel.
 2. Kopier nøkkelparet `id_ed25519` og `id_ed25519.pub` til `/srv/ttl-api/.ssh/`
 
@@ -51,14 +53,18 @@ sudo adduser --system --group --shell /usr/sbin/nologin --home /srv/ttl-frontend
 `git clone git@github.com:tplive/harstadmakers.git`
 
 ### Frontend: Installer Deno
+
 1. Installer med `curl -fsSL https://deno.land/install.sh | sh -s -- --yes`.
-2. Flytt filene 
-  * `sudo mkdir -p /opt/deno`
-  * `sudo mv ~/.deno/bin/deno /opt/deno/`
-  * `sudo ln -sf /opt/deno/bin/deno /usr/local/bin/deno  # adjust if paths differ`
+2. Flytt filene
+
+* `sudo mkdir -p /opt/deno`
+* `sudo mv ~/.deno/bin/deno /opt/deno/`
+* `sudo ln -sf /opt/deno/bin/deno /usr/local/bin/deno  # adjust if paths differ`
+
 3. Gjør tilgengelig for svc-ttl-frontend brukeren:
-  * `sudo mkdir -p /srv/deno/.cache`
-  * `sudo chown -R svc-ttl-frontend:svc-ttl-frontend /srv/deno`
+
+* `sudo mkdir -p /srv/deno/.cache`
+* `sudo chown -R svc-ttl-frontend:svc-ttl-frontend /srv/deno`
 
 ### Frontend: Installer api-frontend filene
 
@@ -76,7 +82,7 @@ Frontend-sertifikatene som er oppgitt for denne installasjonen er:
 /home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
 ```
 
-Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene. 
+Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene.
 
 ### API: Installer api-backend filene
 
@@ -88,21 +94,35 @@ Konfigurasjonen inneholder også stier til TLS-sertifikat og privat nøkkel for
 backend. Sertifikatene kan utstedes og fornyes med `acme.sh`. Sørg for at
 `svc-ttl-api` og `svc-ttl-frontend` kan lese de relevante sertifikatfilene.
 
-Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`. 
+Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`.
 
 Alternativ: Kompilèr selv med cargo. Kopier da `target/release/ttl-api` til `/srv/ttl-api`.
 
+### Discord-integrasjon
+
+TTL-backend bruker en generell Discord-notifikasjonslayer som kan utvides til nye hendelser uten å endre app-arkitekturen. Konfigurasjonen støtter separate webhooks for admin- og access-flows:
+
+* `discord_admin_webhook_url` → sender dørsignal, feil og Domeneshop-utløpsvarsler til `ttl-admin`-kanalen.
+* `discord_access_webhook_url` → sender nye registreringer til `ttl-access`-kanalen.
+
+TODO: Status på Domeneshop-token fornyelse varsles fra egen cron-jobb.
+TODO: Status på sertifikatfornyelse varsles fra egen cron-jobb i et separat shell-script eller python program.
+
+Dette er lagt inn i `ttl/backend/configuration.json` som valgfrie felter. Dersom webhook-URL-en er tom, sendes ingen melding.
+
 ### Installere Pocketbase
+
 1. Last ned [Pocketbase 0.41.1 for Linux ARM64](https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.1/pocketbase_0.41.1_linux_arm64.zip). Senere kan man oppdatere med `pocketbase update`
 1. Unzip og flytt pocketbase binærfilen til `/srv/pocketbase`.
-2. Start Pocketbase manuelt med `cd /srv/pocketbase && sudo ./pocketbase serve`. Dette gir startup-URL med token for initiell innlogging. Klikk linken. Pocketbase åpnes i nettleser og lar deg registrere brukernavn og passord for **superuser**.
-3. Database opprettes i `pb_data/`.
-4. Gå til Settings, Import collections og importer `ttl/backend/pb_schema.json` fra dette repoet.
-5. Opprett ny bruker i `users` collection for ttl-api. Gi brukeren lese og skrivetilgang til `members` og `door_events` collections.
-6. Konfigurer brukernavn og passord i `configuration.json`.
-7. Stopp Pocketbase manuell kjøring med Ctrl-C.
-8. `sudo systemctl daemon-reload`
-9.  Start systemservice:
+1. Start Pocketbase manuelt med `cd /srv/pocketbase && sudo ./pocketbase serve`. Dette gir startup-URL med token for initiell innlogging. Klikk linken. Pocketbase åpnes i nettleser og lar deg registrere brukernavn og passord for **superuser**.
+1. Database opprettes i `pb_data/`.
+1. Gå til Settings, Import collections og importer `ttl/backend/pb_schema.json` fra dette repoet.
+1. Opprett ny bruker i `users` collection for ttl-api. Gi brukeren lese og skrivetilgang til `members` og `door_events` collections.
+1. Konfigurer brukernavn og passord i `configuration.json`.
+1. Stopp Pocketbase manuell kjøring med Ctrl-C.
+1. `sudo systemctl daemon-reload`
+1. Start systemservice:
+
 ```bash
 sudo systemctl enable --now pocketbase
 systemctl status pocketbase   # verify it's running as the right user
@@ -110,6 +130,7 @@ ps -o user= -C pocketbase
 ```
 
 ### Servicedefinisjoner
+
 1. Lag servicedefinisjoner for hver tjeneste (pocketbase, ttl-api, ttl-frontend) i hhv.
    * `/etc/systemd/system/pocketbase.service`
    * `/etc/systemd/system/ttl-api.service`
@@ -120,13 +141,15 @@ ps -o user= -C pocketbase
 ## Ekstra herding av operativsystemet
 
 1. Ekstra herding av operativsystemet:
+
 ```bash
 sudo apt update && sudo apt full-upgrade -y
 sudo apt install unattended-upgrades ufw fail2ban -y
 sudo dpkg-reconfigure -plow unattended-upgrades
 ```
 
-2. Etter å ha satt opp SSH nøkler på hosten;
+1. Etter å ha satt opp SSH nøkler på hosten;
+
 ```bash
 # Firewall: only allow SSH (and any service ports you expose, e.g. 80/443)
 sudo ufw default deny incoming
@@ -135,15 +158,15 @@ sudo ufw allow OpenSSH
 sudo ufw allow 80,443/tcp   # if web servers must be reachable externally
 sudo ufw enable
 ```
+
 3. Sett opp SSH kun med nøkler (passordløst):
+
 ```bash
 # SSH: key-only auth
 sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sudo systemctl restart ssh
 ```
-
-
 
 ### Strømforsyning og backup
 
@@ -160,7 +183,7 @@ flowchart LR
     DEV -.->|5V styrespenning | RELE["Dørlås"]
 ```
 
-Alle kritiske enheter går via UPS. Det gir nettverksutstyr og servere kontinuerlig backup ved strømavbrudd. 
+Alle kritiske enheter går via UPS. Det gir nettverksutstyr og servere kontinuerlig backup ved strømavbrudd.
 
 UPS vil signalisere kontrollert shutdown til PC server, som både hindrer feil på server og sparer batteristrøm til dørlås og ruter.
 
@@ -257,11 +280,11 @@ sudo chmod 640 /etc/ttl-backend/backend.env
 
 Token må ikke legges i:
 
-- Git
-- prosjektets `.env`-filer
-- frontend-kode
-- README-filer
-- shell-kommandoer som kan havne i historikken
+* Git
+* prosjektets `.env`-filer
+* frontend-kode
+* README-filer
+* shell-kommandoer som kan havne i historikken
 
 ## Backend-service
 
@@ -378,13 +401,13 @@ Ikke logg tokenet eller skriv det ut i feilmeldinger.
 
 ## Nettverk og sikkerhet
 
-- Bruk `127.0.0.1` i `POCKETBASE_URL`, ikke maskinens LAN-adresse, siden trafikken går ukryptert, men kan ikke avlyttes fra LAN.
-- Ikke eksponer port `8090` gjennom brannmur eller reverse proxy.
-- Bruk HTTPS for klienttrafikk til frontend/backend i produksjon.
-- Kjør PocketBase og backend som separate brukere.
-- Ta sikkerhetskopi av PocketBase med innebygget backup-funksjonalitet. Lagre backup offsite.
-- Hold PocketBase, operativsystem og Rust-binær oppdatert.
-- Ikke inkluder hemmeligheter i repository, logger eller API-responser.
+* Bruk `127.0.0.1` i `POCKETBASE_URL`, ikke maskinens LAN-adresse, siden trafikken går ukryptert, men kan ikke avlyttes fra LAN.
+* Ikke eksponer port `8090` gjennom brannmur eller reverse proxy.
+* Bruk HTTPS for klienttrafikk til frontend/backend i produksjon.
+* Kjør PocketBase og backend som separate brukere.
+* Ta sikkerhetskopi av PocketBase med innebygget backup-funksjonalitet. Lagre backup offsite.
+* Hold PocketBase, operativsystem og Rust-binær oppdatert.
+* Ikke inkluder hemmeligheter i repository, logger eller API-responser.
 
 ## Feilsøking
 
@@ -396,8 +419,8 @@ journalctl -u ttl-backend.service -n 100 --no-pager
 
 Vanlige årsaker:
 
-- `POCKETBASE_URL` mangler eller peker feil.
-- `POCKETBASE_TOKEN` mangler eller er utløpt.
-- PocketBase kjører ikke.
-- PocketBase lytter på en annen adresse eller port.
-- `members` eller `door_events` mangler.
+* `POCKETBASE_URL` mangler eller peker feil.
+* `POCKETBASE_TOKEN` mangler eller er utløpt.
+* PocketBase kjører ikke.
+* PocketBase lytter på en annen adresse eller port.
+* `members` eller `door_events` mangler.
