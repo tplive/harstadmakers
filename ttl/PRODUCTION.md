@@ -92,6 +92,18 @@ Last ned releaseversjon (TODO) fra repoet `/srv/ttl-api`.
 
 Alternativ: Kompilèr selv med cargo. Kopier da `target/release/ttl-api` til `/srv/ttl-api`.
 
+### Discord-integrasjon
+
+TTL-backend bruker en generell Discord-notifikasjonslayer som kan utvides til nye hendelser uten å endre app-arkitekturen. Konfigurasjonen støtter separate webhooks for admin- og access-flows:
+
+- `discord_admin_webhook_url` → sender dørsignal, feil og Domeneshop-utløpsvarsler til `ttl-admin`-kanalen.
+- `discord_access_webhook_url` → sender nye registreringer til `ttl-access`-kanalen.
+
+TODO: Status på Domeneshop-token fornyelse varsles fra egen cron-jobb.
+TODO: Status på sertifikatfornyelse varsles fra egen cron-jobb i et separat shell-script eller python program.
+
+Dette er lagt inn i `ttl/backend/configuration.json` som valgfrie felter. Dersom webhook-URL-en er tom, sendes ingen melding.
+
 ### Installere Pocketbase
 1. Last ned [Pocketbase 0.41.1 for Linux ARM64](https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v0.41.1/pocketbase_0.41.1_linux_arm64.zip). Senere kan man oppdatere med `pocketbase update`
 1. Unzip og flytt pocketbase binærfilen til `/srv/pocketbase`.

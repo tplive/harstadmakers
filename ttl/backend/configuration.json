@@ -6,6 +6,8 @@
     "ttl_api_url": "https://ttl-api.harstadmakers.no:4433",
     "pocketbase_url": "http://127.0.0.1:8090",
     "pocketbase_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJleHAiOjE3OTQxNjMyOTAsImlkIjoieGIxNTdic2VwcnNicnY4IiwicmVmcmVzaGFibGUiOmZhbHNlLCJ0eXBlIjoiYXV0aCJ9.4YkEm7L2HloNOTFaUcZjz5f_lNc4OgCs4aZnX8t3FyI",
+    "discord_admin_webhook_url": "",
+    "discord_access_webhook_url": "",
     "data_dir": "./data",
     "bind_address": "0.0.0.0:4433",
     "tls_certificate_path": "/home/thomas/.acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
