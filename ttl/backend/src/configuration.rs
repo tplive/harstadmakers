@@ -22,6 +22,8 @@ pub struct Configuration {
     pub bind_address: String,
     pub tls_certificate_path: PathBuf,
     pub tls_private_key_path: PathBuf,
+    #[serde(default = "default_tls_enabled")]
+    pub tls_enabled: bool,
     #[serde(default = "default_relay_gpio_pin")]
     pub relay_gpio_pin: u8,
     #[serde(default = "default_hall_sensor_gpio_pin")]
@@ -92,6 +94,10 @@ fn default_unlock_duration_ms() -> u64 {
     1_000
 }
 
+fn default_tls_enabled() -> bool {
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +150,7 @@ mod tests {
         assert_eq!(configuration.relay_gpio_pin, 18);
         assert_eq!(configuration.hall_sensor_gpio_pin, 23);
         assert_eq!(configuration.unlock_duration_ms, 1_000);
+        assert!(configuration.tls_enabled);
         assert!(!configuration.gpio_enabled);
         assert_eq!(configuration.discord_admin_webhook_url, None);
         assert_eq!(configuration.discord_access_webhook_url, None);

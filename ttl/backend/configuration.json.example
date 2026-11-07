@@ -12,6 +12,7 @@
     "bind_address": "0.0.0.0:4433",
     "tls_certificate_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
     "tls_private_key_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key",
+    "tls_enabled": true,
     "relay_gpio_pin": 18,
     "hall_sensor_gpio_pin": 23,
     "unlock_duration_ms": 1000,

@@ -41,6 +41,11 @@ Backend leser som standard `./configuration.json`. En annen fil kan angis med
 cargo run -- --config /path/to/configuration.json
 ```
 
+The development configuration serves the API over HTTP on `localhost:3000`.
+TLS remains enabled by default and is enabled in the production example
+configuration. Set `tls_enabled` to `true` or `false` in the configuration
+file to choose the transport.
+
 Konfigurasjonen styrer serverens Ed25519-nøkkelstier, challenge- og
 medlemsutløp, PocketBase-tilkobling, datakatalog, bind-adresse og GPIO:
 
@@ -56,8 +61,9 @@ Relémodulen må derfor ha en 3,3 V-kompatibel inngang eller egnet nivåtilpasni
 PocketBase brukes når `pocketbase_url` ikke er tom; ellers brukes JSON-filer i
 `data_dir`.
 
-Dette starter Rust-API-et over HTTPS på konfigurasjonens `bind_address`, som
-standardproduksjonskonfigurasjonen setter til `0.0.0.0:4433`. Sertifikat og privat nøkkel angis med
+Dette starter Rust-API-et over HTTP eller HTTPS, avhengig av `tls_enabled`, på
+konfigurasjonens `bind_address`, som standardproduksjonskonfigurasjonen setter
+til `0.0.0.0:4433`. Sertifikat og privat nøkkel angis med
 `tls_certificate_path` og `tls_private_key_path` i `configuration.json`.
 
 ### 3. Frontend
