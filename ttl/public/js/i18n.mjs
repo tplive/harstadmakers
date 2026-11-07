@@ -32,7 +32,7 @@ export const translations = {
   },
   'hero.description': {
     en: 'This website is used to unlock the door to Harstad Makers.',
-    nb_no: 'Denne nettsiden brukes for å låse opp døra til Harstad Makers.',
+    nb_no: 'Denne nettsiden brukes for å låse opp døra hos Harstad Makers.',
     se: 'Dát neahttasiidu geavahuvvo rahpat Harstad Makers-lanja uvssa.',
   },
   'status.checking': {
@@ -46,7 +46,7 @@ export const translations = {
   },
   'registration.description': {
     en: 'Before you can unlock the door, you must register this device. This registration applies only to this browser.',
-    nb_no: 'Før du kan låse opp døra, må du registrere denne enheten. Denne registreringen gjelder kun for denne nettleseren.',
+    nb_no: 'Før du kan låse opp døra, må du registrere deg. Denne registreringen gjelder kun for denne nettleseren.',
     se: 'Ovdal go sáhtát rahpat uvssa, fertet čáli dán ovttadaga.',
   },
   'form.fullName': {
@@ -61,9 +61,11 @@ export const translations = {
   },
   'form.fullNamePlaceholder': {
     en: 'Jane Maker',
+    nb_no: 'Johannes Skaperen',
   },
   'form.emailPlaceholder': {
-    en: 'jane@harstadmakers.no',
+    en: 'jane@bigtechiswatching.com',
+    nb_no: 'johannes@skaperen.no'
   },
   'registration.button': {
     en: 'Register this browser',
@@ -110,16 +112,16 @@ export const translations = {
     se: 'Fertet čáli dán fierpmádatloggári vuos.',
   },
   'status.checkingRegistration': {
-    en: 'Checking registration on server...',
-    nb_no: 'Sjekker registrering på server...',
+    en: 'Checking registration in our database...',
+    nb_no: 'Sjekker registrering i vår database...',
   },
   'status.registrationVerified': {
     en: 'Registration verified. Ready to unlock.',
     nb_no: 'Registrering bekreftet. Klar til å låse opp.',
   },
   'status.registrationComplete': {
-    en: 'Registration complete! Wait for administrator approval.',
-    nb_no: 'Registrering fullført! Vent på godkjenning fra administrator.',
+    en: 'Registration complete! Please wait for administrator approval.',
+    nb_no: 'Registrering fullført! Vennligst vent på godkjenning fra administrator.',
     se: 'Čáliheapmi gárvvui! Vuordde hálddašeaddji dohkkeheami.',
   },
   'status.registrationPending': {
@@ -175,8 +177,8 @@ export const translations = {
     se: 'Bálvva duođašteapmi filtii. Geahččal ođđasit.',
   },
   'error.registrationMissing': {
-    en: 'Your registration{{member}} was not found on the server. It may have been deleted. Please register again.',
-    nb_no: 'Registreringen din{{member}} finnes ikke på serveren. Den kan ha blitt slettet. Vennligst registrer på nytt.',
+    en: 'Your registration{{member}} was not found in the database. It may have been deleted. Please register again.',
+    nb_no: 'Registreringen din{{member}} finnes ikke i databasen. Den kan ha blitt slettet. Vennligst registrer på nytt.',
   },
   'error.memberExpired': {
     en: 'Your access{{member}} has expired and is disabled. Contact an administrator to reactivate it.',
@@ -187,8 +189,8 @@ export const translations = {
     nb_no: 'Din registrering{{member}} er ikke aktivert enda. Vennligst vent på at administrator godkjenner den.',
   },
   'error.network': {
-    en: 'Could not connect to the server. Check that you are connected to the correct Wi-Fi network.',
-    nb_no: 'Kunne ikke koble til serveren. Sjekk at du er koblet til riktig Wi-Fi-nettverk.',
+    en: 'Could not connect to the server. Please contact the administrator.',
+    nb_no: 'Kunne ikke koble til serveren. Vennligst ta kontakt med administrator.',
   },
   'error.challenge': {
     en: 'Challenge error. Please try again.',
