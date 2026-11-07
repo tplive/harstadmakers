@@ -1,0 +1,19 @@
+{
+    "server_signing_private_key_path": "/home/my-admin-user/.ssh/id_ed25519",
+    "server_signing_public_key_path": "/home/my-admin-user/.ssh/id_ed25519.pub",
+    "challenge_expiry_minutes": 10,
+    "default_member_expiry_days": 365,
+    "ttl_api_url": "https://ttl-api.harstadmakers.no:4433",
+    "pocketbase_url": "http://127.0.0.1:8090",
+    "pocketbase_token": "YOUR_POCKETBASE_USER_TOKEN_HERE",
+    "discord_admin_webhook_url": "<YOUR_DISCORD_URL_HERE_FOR_YOUR_ADMIN_EVENTS>",
+    "discord_access_webhook_url": "<YOUR_DISCORD_URL_HERE_FOR_YOUR_ACCESS_EVENTS>",
+    "data_dir": "./data",
+    "bind_address": "0.0.0.0:4433",
+    "tls_certificate_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
+    "tls_private_key_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key",
+    "relay_gpio_pin": 18,
+    "hall_sensor_gpio_pin": 23,
+    "unlock_duration_ms": 1000,
+    "gpio_enabled": false
+}
