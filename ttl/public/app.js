@@ -3,6 +3,12 @@ import { checkRegistration, deleteRegistration, registerMember } from './registr
 import { unlockDoor } from './unlock.mjs';
 import { getErrorInfo } from './errors.mjs';
 import {
+  initializeLanguage,
+  setLanguage,
+  translate,
+  translateDocument,
+} from './i18n.mjs';
+import {
   clearRegistrationForm,
   initialize,
   isProcessing,
@@ -23,7 +29,7 @@ function showRegistrationState() {
   currentMemberId = null;
   setMemberId('');
   showRegistrationPanel();
-  setStatus('Du må registrere denne nettleseren først.', 'neutral');
+  setStatus(translate('status.registrationRequired'), 'neutral');
 }
 
 async function checkRegistrationStatus() {
@@ -35,11 +41,11 @@ async function checkRegistrationStatus() {
 
   currentMemberId = memberId;
   setMemberId(memberId);
-  setStatus('Sjekker registrering på server...', 'neutral');
+  setStatus(translate('status.checkingRegistration'), 'neutral');
 
   try {
     await checkRegistration(memberId);
-    setStatus('Registrering bekreftet. Klar til å låse opp.', 'success');
+    setStatus(translate('status.registrationVerified'), 'success');
     showMemberPanel();
   } catch (error) {
     const errorInfo = error.type
@@ -49,9 +55,9 @@ async function checkRegistrationStatus() {
     if (error.type === 'registration_missing' || error.type === 'keys_missing') {
       showRegistrationPanel();
     } else if (error.type === 'member_expired') {
-      showMemberPanel('Tilgangen er utløpt og deaktivert. Kontakt administrator for reaktivering.');
+      showMemberPanel(translate('member.expiredCopy'));
     } else if (error.type === 'member_inactive') {
-      showMemberPanel('Registreringen venter på godkjenning fra administrator.');
+      showMemberPanel(translate('member.inactiveCopy'));
     } else {
       showMemberPanel();
     }
@@ -61,7 +67,7 @@ async function checkRegistrationStatus() {
 async function handleRegistration() {
   const { name, email } = registrationInput();
   if (!name || !email) {
-    setStatus('Fullt navn og e-post må fylles ut.', 'error');
+    setStatus(translate('error.requiredFields'), 'error');
     return;
   }
 
@@ -71,10 +77,10 @@ async function handleRegistration() {
     currentMemberId = member.id;
     setMemberId(member.id);
     clearRegistrationForm();
-    showMemberPanel('Registreringen venter på godkjenning fra administrator.');
-    setStatus('Registrering fullført! Vent på godkjenning fra administrator.', 'success');
+    showMemberPanel(translate('status.registrationPending'));
+    setStatus(translate('status.registrationComplete'), 'success');
   } catch (error) {
-    setStatus(error.message || 'Registrering mislyktes.', 'error');
+    setStatus(error.message || translate('error.registrationFailed'), 'error');
   } finally {
     setProcessing(false);
   }
@@ -82,22 +88,22 @@ async function handleRegistration() {
 
 async function handleUnlock() {
   if (!currentMemberId) {
-    setStatus('Du må registrere nettleseren først.', 'error');
+    setStatus(translate('status.registrationRequired'), 'error');
     return;
   }
 
   setProcessing(true);
-  setStatus('Ber om utfordring...', 'neutral');
+  setStatus(translate('status.unlockRequest'), 'neutral');
   try {
     await unlockDoor(currentMemberId);
-    setStatus('Døra er låst opp!', 'success');
+    setStatus(translate('status.unlocked'), 'success');
     setTimeout(() => {
       if (!isProcessing()) {
-        setStatus('Klar til å låse opp på nytt.', 'neutral');
+        setStatus(translate('status.readyAgain'), 'neutral');
       }
     }, 3000);
   } catch (error) {
-    setStatus(error.message || 'Klarte ikke å låse opp døra.', 'error');
+    setStatus(error.message || translate('error.unlockFailed'), 'error');
   } finally {
     setProcessing(false);
   }
@@ -106,11 +112,23 @@ async function handleUnlock() {
 function handleDelete() {
   deleteRegistration();
   showRegistrationState();
-  setStatus('Registrering slettet. Du kan registrere på nytt når som helst.', 'neutral');
+  setStatus(translate('status.registrationDeleted'), 'neutral');
 }
 
+function changeLanguage(language) {
+  setLanguage(language);
+  translateDocument();
+  checkRegistrationStatus();
+}
+
+const language = initializeLanguage();
+translateDocument();
 initialize();
 onRegister(handleRegistration);
 onUnlock(handleUnlock);
 onDelete(handleDelete);
+document.getElementById('language-select').addEventListener('change', (event) => {
+  changeLanguage(event.target.value);
+});
+document.getElementById('language-select').value = language;
 checkRegistrationStatus();

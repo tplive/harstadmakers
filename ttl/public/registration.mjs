@@ -11,6 +11,7 @@ import {
 import { postJson } from './api.mjs';
 import { createAppError, getErrorInfo } from './errors.mjs';
 import { requestVerifiedChallenge } from './challenge.mjs';
+import { translate } from './i18n.mjs';
 
 export async function registerMember(name, email) {
   const memberKeyPair = await generateMemberKeyPair();
@@ -38,7 +39,7 @@ export async function registerMember(name, email) {
   if (!verified) {
     throw createAppError(
       'verification_failed',
-      'Server-verifisering mislyktes under registrering.',
+      translate('error.registrationVerification'),
       'Server challenge verification failed during registration',
     );
   }

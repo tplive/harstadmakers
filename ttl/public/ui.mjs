@@ -28,7 +28,7 @@ export function setProcessing(value) {
   elements.unlockButton.disabled = value;
   elements.registerButton.disabled = value;
   if (value) {
-    setStatus('Venter...', 'neutral');
+    setStatus(translate('status.waiting'), 'neutral');
   }
 }
 
@@ -41,7 +41,7 @@ export function showRegistrationPanel() {
   setHidden(elements.memberPanel, true);
 }
 
-export function showMemberPanel(copy = 'Nettleseren er registrert og klar til bruk.') {
+export function showMemberPanel(copy = translate('member.ready')) {
   elements.memberPanelCopy.textContent = copy;
   setHidden(elements.registrationPanel, true);
   setHidden(elements.memberPanel, false);
@@ -76,7 +76,8 @@ export function onDelete(callback) {
 }
 
 export function initialize() {
-  setStatus('Sjekker registreringsstatus...', 'neutral');
+  setStatus(translate('status.checking'), 'neutral');
   setHidden(elements.registrationPanel, true);
   setHidden(elements.memberPanel, true);
 }
+import { translate } from './i18n.mjs';

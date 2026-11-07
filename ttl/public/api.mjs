@@ -1,3 +1,5 @@
+import { translate } from './i18n.mjs';
+
 const DEFAULT_API_BASE = 'http://localhost:3000';
 
 function resolveApiBase() {
@@ -31,7 +33,7 @@ export async function postJson(path, payload) {
   const data = await response.json();
 
   if (!response.ok) {
-    const error = new Error(data.error || 'Ukjent feil');
+    const error = new Error(data.error || translate('error.unknown'));
     error.backendMessage = data.error || '';
     throw error;
   }

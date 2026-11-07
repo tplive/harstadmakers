@@ -7,13 +7,14 @@ import {
 } from './ttl-crypto.mjs';
 import { postJson } from './api.mjs';
 import { createAppError, getErrorInfo } from './errors.mjs';
+import { translate } from './i18n.mjs';
 
 export async function requestVerifiedChallenge(memberId) {
   const serverPublicKey = getStoredServerPublicKey();
   if (!serverPublicKey) {
     throw createAppError(
       'keys_missing',
-      'Nøkkeldata mangler. Vennligst registrer denne nettleseren på nytt.',
+      translate('error.keysMissing'),
       'No stored server public key',
     );
   }
@@ -39,7 +40,7 @@ export async function requestVerifiedChallenge(memberId) {
   if (data.client_nonce !== clientNonce) {
     throw createAppError(
       'verification_failed',
-      'Server-verifisering mislyktes. Prøv på nytt.',
+      translate('error.verificationFailed'),
       'Client nonce mismatch',
     );
   }
@@ -52,7 +53,7 @@ export async function requestVerifiedChallenge(memberId) {
   if (!verified) {
     throw createAppError(
       'verification_failed',
-      'Server-verifisering mislyktes. Prøv på nytt.',
+      translate('error.verificationFailed'),
       'Server challenge verification failed',
     );
   }
