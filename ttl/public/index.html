@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title data-i18n="page.title">Harstad Makers</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20261107" />
   </head>
   <body>
     <header class="topbar">
@@ -45,37 +45,36 @@
             </div>
           </div>
         </div>
-      </section>
-
-      <section id="registration-panel" class="panel hidden">
-        <h3 data-i18n="registration.heading">Register this browser</h3>
-        <p class="panel-copy" data-i18n="registration.description">Before you can unlock the door, you must register this device. This registration applies only to this browser.</p>
-        <div class="stack compact-stack">
-          <label>
-            <span data-i18n="form.fullName">Full name</span>
-            <input id="register-member-name" type="text" data-i18n-placeholder="form.fullNamePlaceholder" placeholder="Jane Maker" autocomplete="name" />
-          </label>
-          <label>
-            <span data-i18n="form.email">Email</span>
-            <input id="register-member-email" type="email" data-i18n-placeholder="form.emailPlaceholder" placeholder="jane@harstadmakers.no" autocomplete="email" />
-          </label>
-          <button id="register-browser" class="primary wide-button" data-i18n="registration.button">Register this browser</button>
-        </div>
-      </section>
-
-      <section id="member-panel" class="panel hidden">
-        <h3 data-i18n="member.heading">Ready to unlock</h3>
-        <p id="member-panel-copy" class="panel-copy" data-i18n="member.ready">The browser is registered and ready to use.</p>
-        <div class="single-action-card">
-          <div>
-            <p class="card-label" data-i18n="member.registeredAs">Registered as</p>
-            <p id="registered-member-id" class="member-id-value"></p>
+        <section id="registration-panel" class="panel hidden">
+          <h3 data-i18n="registration.heading">Register this browser</h3>
+          <p class="panel-copy" data-i18n="registration.description">Before you can unlock the door, you must register this device. This registration applies only to this browser.</p>
+          <div class="stack compact-stack">
+            <label>
+              <span data-i18n="form.fullName">Full name</span>
+              <input id="register-member-name" type="text" data-i18n-placeholder="form.fullNamePlaceholder" placeholder="Jane Maker" autocomplete="name" />
+            </label>
+            <label>
+              <span data-i18n="form.email">Email</span>
+              <input id="register-member-email" type="email" data-i18n-placeholder="form.emailPlaceholder" placeholder="jane@harstadmakers.no" autocomplete="email" />
+            </label>
+            <button id="register-browser" class="primary wide-button" data-i18n="registration.button">Register this browser</button>
           </div>
-          <div class="button-stack">
-            <button id="unlock-door" class="primary wide-button" data-i18n="unlock.button">Unlock the door</button>
-            <button id="delete-registration" class="subtle-button wide-button" data-i18n="registration.delete">Delete registration</button>
+        </section>
+
+        <section id="member-panel" class="panel hidden">
+          <h3 data-i18n="member.heading">Ready to unlock</h3>
+          <p id="member-panel-copy" class="panel-copy" data-i18n="member.ready">The browser is registered and ready to use.</p>
+          <div class="single-action-card">
+            <div>
+              <p class="card-label" data-i18n="member.registeredAs">Registered as</p>
+              <p id="registered-member-id" class="member-id-value"></p>
+            </div>
+            <div class="button-stack">
+              <button id="unlock-door" class="primary wide-button" data-i18n="unlock.button">Unlock the door</button>
+              <button id="delete-registration" class="subtle-button wide-button" data-i18n="registration.delete">Delete registration</button>
+            </div>
           </div>
-        </div>
+        </section>
       </section>
     </main>
 

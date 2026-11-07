@@ -3,8 +3,8 @@
   --background-accent: #fff1d6;
   --surface: #ffffff;
   --surface-soft: #fff8eb;
-  --primary: #f06b4f;
-  --primary-dark: #d94f38;
+  --primary: #4f83d1;
+  --primary-dark: #3566b0;
   --secondary: #19a974;
   --secondary-dark: #087f5b;
   --text: #263238;
@@ -290,6 +290,11 @@ button.subtle-button {
   box-shadow: 0 18px 45px var(--shadow);
 }
 
+.hero > .panel {
+  width: 100%;
+  margin-top: -12rem;
+}
+
 .panel h3 {
   margin-top: 0;
 }
@@ -403,15 +408,26 @@ input {
 
   .hero {
     grid-template-columns: 1.1fr 0.9fr;
+    grid-template-areas:
+      "copy visual"
+      "panel visual";
+    grid-template-rows: auto 1fr;
     gap: 3rem;
     min-height: 38rem;
+    align-items: start;
+  }
+
+  .hero-copy {
+    grid-area: copy;
   }
 
   .hero-visual {
+    grid-area: visual;
     min-height: 38rem;
   }
 
-  .panel {
+  .hero > .panel {
+    grid-area: panel;
     margin-top: 2rem;
   }
 
