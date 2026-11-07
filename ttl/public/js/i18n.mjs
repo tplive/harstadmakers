@@ -20,6 +20,11 @@ export const translations = {
     nb_no: 'Tilgang til lokalene',
     se: 'Beassan lokálaide',
   },
+  'hero.badge': {
+    en: 'Access control',
+    nb_no: 'Adgangskontroll',
+    se: 'Beassan dárbbašeapmi',
+  },
   'hero.heading': {
     en: 'Door access',
     nb_no: 'Dørtilgang',
