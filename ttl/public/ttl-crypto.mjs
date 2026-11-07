@@ -180,17 +180,3 @@ export function clearStoredRegistration() {
   storage.removeItem(MEMBER_ID_STORAGE_KEY);
   storage.removeItem(SERVER_PUBLIC_KEY_STORAGE_KEY);
 }
-
-export function setMemberIdField(value) {
-  const memberIdField = document.getElementById('member-id');
-  if (memberIdField) {
-    memberIdField.value = value || '';
-  }
-}
-
-export function setChallengeDecryptedNonce(value) {
-  const decryptedNonceField = document.getElementById('decrypted-nonce');
-  if (decryptedNonceField) {
-    decryptedNonceField.value = value || '';
-  }
-}
