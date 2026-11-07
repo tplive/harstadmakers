@@ -281,7 +281,7 @@ button.subtle-button {
 
 .panel {
   position: relative;
-  z-index: 1;
+  z-index: 5;
   margin-top: -0.5rem;
   padding: 1.15rem;
   border: 1px solid var(--border);
@@ -390,6 +390,34 @@ input {
 
 .wide-button {
   width: 100%;
+}
+
+@media (max-width: 760px) {
+  .hero {
+    gap: 0;
+  }
+
+  .hero-visual {
+    min-height: 44rem;
+    overflow: hidden;
+  }
+
+  .door-frame {
+    width: min(82%, 20rem);
+    height: 44rem;
+  }
+
+  .yale-lock {
+    top: 66%;
+  }
+
+  .door-handle {
+    top: calc(66% + 3.8rem);
+  }
+
+  .hero > .panel {
+    margin-top: -33.2rem;
+  }
 }
 
 @media (min-width: 761px) {
