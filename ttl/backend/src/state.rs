@@ -138,12 +138,9 @@ impl AppState {
             members.push(member.clone());
         }
 
-        let _ = self.notifications.notify_with_kind(
-            NotificationChannel::Access,
-            crate::notifications::NotificationKind::Registration,
-            "New TTL registration",
-            &format!("{} ({}) registered for access.", member.name, member.email),
-        );
+        let _ = self
+            .notifications
+            .notify_registration(&member.id, &member.name, &member.email);
 
         Ok(RegistrationResponse {
             member,
@@ -326,13 +323,6 @@ impl AppState {
 
         let event = self.event_repository.save_event(&event)?;
         self.events.write().unwrap().push(event.clone());
-
-        let _ = self.notifications.notify_with_kind(
-            NotificationChannel::Admin,
-            crate::notifications::NotificationKind::DoorEvent,
-            "Door event",
-            &format!("Door unlock granted for {} at {}.", member.name, event.timestamp),
-        );
 
         self.persist_members()?;
 

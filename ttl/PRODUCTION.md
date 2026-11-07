@@ -144,13 +144,13 @@ Alternativ: Kompilèr selv med cargo. Kopier da `target/release/ttl-api` til `/s
 
 TTL-backend bruker en generell Discord-notifikasjonslayer som kan utvides til nye hendelser uten å endre app-arkitekturen. Konfigurasjonen støtter separate webhooks for admin- og access-flows:
 
-* `discord_admin_webhook_url` → sender dørsignal, feil og Domeneshop-utløpsvarsler til `ttl-admin`-kanalen.
-* `discord_access_webhook_url` → sender nye registreringer til `ttl-access`-kanalen.
+* `discord_admin_webhook_url` → sender feilmeldinger og utløpsvarsler til `ttl-admin`-kanalen. Registrert åpning av døra lagres i `door_event`-tabellen, men varsles ikke til Discord.
+* `discord_access_webhook_url` → sender nye registreringer til `ttl-access`-kanalen, så dør-admin kan aktivere brukeren.
 
-TODO: Status på Domeneshop-token fornyelse varsles fra egen cron-jobb.
-TODO: Status på sertifikatfornyelse varsles fra egen cron-jobb i et separat shell-script eller python program.
+TODO: Status på Domeneshop-token fornyelse varsles fra egen cron-jobb til `ttl-admin` kanalen.
+TODO: Status på sertifikatfornyelse varsles fra egen cron-jobb i et separat shell-script eller python program, til `ttl-admin`-kanalen.
 
-Dette er lagt inn i `ttl/backend/configuration.json` som valgfrie felter. Dersom webhook-URL-en er tom, sendes ingen melding.
+Discord webhook legges inn i `ttl/backend/configuration.json` som valgfrie felter. Dersom webhook-URL-en er tom, sendes ingen melding.
 
 ### Installere Pocketbase
 

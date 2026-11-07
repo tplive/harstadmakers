@@ -136,12 +136,20 @@ impl DiscordNotifier {
         )
     }
 
-    pub fn notify_registration(&self, member_name: &str, email: &str) -> Result<()> {
+    pub fn notify_registration(
+        &self,
+        member_id: &str,
+        member_name: &str,
+        email: &str,
+    ) -> Result<()> {
         self.notify_with_kind(
             NotificationChannel::Access,
             NotificationKind::Registration,
-            "New TTL registration",
-            &format!("{} ({}) registered for access.", member_name, email),
+            "Ny registrering i TTL",
+            &format!(
+                "{} ({}) registrerte seg og må aktiveres. ID: {}.",
+                member_name, email, member_id
+            ),
         )
     }
 
