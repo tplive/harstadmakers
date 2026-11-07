@@ -1,0 +1,3 @@
+# Install as /etc/cron.d/ttl-domeneshop-expiry.
+# Run once daily at 15:00 using the account that owns ~/domeneshop_api.json.
+0 15 * * * thomas /usr/bin/python3 /srv/ttl-api/scripts/check_domeneshop_expiry.py --credentials /home/thomas/domeneshop_api.json --configuration /srv/ttl-api/configuration.json >> /home/thomas/domeneshop-expiry.log 2>&1

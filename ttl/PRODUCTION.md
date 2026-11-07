@@ -93,7 +93,7 @@ Begge tjenestene bruker sertifikatfilene i `/srv/ttl-certs/`:
 
 Gi `svc-ttl-frontend` lesetilgang til sertifikatfilene.
 Opprett en egen gruppe for sertifikatene, slik at ingen av tjenestene trenger
-lesetilgang til `/home/thomas`:
+lesetilgang til `/home/my-admin-user`:
 
 ```bash
 sudo groupadd --system ttl-certs
@@ -107,7 +107,7 @@ viktig fordi filene i `~/.acme.sh/` er interne arbeidsfiler og ikke skal brukes
 direkte av systemtjenestene:
 
 ```bash
-sudo /home/thomas/.acme.sh/acme.sh --install-cert \
+sudo /home/my-admin-user/.acme.sh/acme.sh --install-cert \
   -d ttl.harstadmakers.no \
   --fullchain-file /srv/ttl-certs/fullchain.cer \
   --key-file /srv/ttl-certs/ttl.harstadmakers.no.key \
@@ -147,10 +147,76 @@ TTL-backend bruker en generell Discord-notifikasjonslayer som kan utvides til ny
 * `discord_admin_webhook_url` → sender feilmeldinger og utløpsvarsler til `ttl-admin`-kanalen. Registrert åpning av døra lagres i `door_event`-tabellen, men varsles ikke til Discord.
 * `discord_access_webhook_url` → sender nye registreringer til `ttl-access`-kanalen, så dør-admin kan aktivere brukeren.
 
-TODO: Status på Domeneshop-token fornyelse varsles fra egen cron-jobb til `ttl-admin` kanalen.
-TODO: Status på sertifikatfornyelse varsles fra egen cron-jobb i et separat shell-script eller python program, til `ttl-admin`-kanalen.
-
 Discord webhook legges inn i `ttl/backend/configuration.json` som valgfrie felter. Dersom webhook-URL-en er tom, sendes ingen melding.
+
+### Domeneshop-token overvåking
+
+`backend/scripts/check_domeneshop_expiry.py` checks `domeneshop_expires` once per day and
+sends a notification through `discord_admin_webhook_url` when the expiry is less
+than 30 days away. Expired credentials also trigger a notification.
+
+Install the script with the deployed API files:
+
+```bash
+sudo install -d -o root -g root -m 0755 /srv/ttl-api/scripts
+sudo install -o root -g root -m 0755 \
+  backend/scripts/check_domeneshop_expiry.py /srv/ttl-api/scripts/check_domeneshop_expiry.py
+```
+
+Create the cron job from the repository template:
+
+```bash
+sudo install -o root -g root -m 0644 \
+  cron.d/ttl-domeneshop-expiry /etc/cron.d/ttl-domeneshop-expiry
+```
+
+The installed file must be owned by `root`, have mode `0644`, and use the
+following five-field cron schedule:
+
+```text
+minute hour day-of-month month day-of-week
+0      15   *           *     *
+```
+
+This runs every day at 15:00 according to the server's local timezone. The
+template runs the checker as `my-admin-user` and reads
+`/home/my-admin-user/domeneshop_api.json`. Change the cron user and paths when the
+production account or file locations differ. For example, edit the installed
+job with:
+
+```bash
+sudoedit /etc/cron.d/ttl-domeneshop-expiry
+```
+
+The credentials file must be owned by the cron user and readable only by that
+user:
+
+```bash
+sudo chown my-admin-user:my-admin-user /home/my-admin-user/domeneshop_api.json
+chmod 600 /home/my-admin-user/domeneshop_api.json
+```
+
+Verify the cron file and daemon have accepted the job:
+
+```bash
+sudo stat -c '%U:%G %a %n' /etc/cron.d/ttl-domeneshop-expiry
+sudo systemctl status cron --no-pager
+```
+
+Test the checker manually before waiting for the scheduled run:
+
+```bash
+sudo -u my-admin-user /usr/bin/python3 /srv/ttl-api/scripts/check_domeneshop_expiry.py \
+  --credentials /home/my-admin-user/domeneshop_api.json \
+  --configuration /srv/ttl-api/configuration.json
+```
+
+The checker writes its output to `/home/my-admin-user/domeneshop-expiry.log`. Inspect
+the log after 15:00 to confirm that cron executed it:
+
+```bash
+sudo -u my-admin-user tail -n 50 /home/my-admin-user/domeneshop-expiry.log
+```
 
 ### Installere Pocketbase
 
