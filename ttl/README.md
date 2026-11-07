@@ -45,7 +45,7 @@ Teknologien som brukes er public key-kryptografi med Ed25519-signaturer.
 
 - Frontend: statisk HTML, CSS og JavaScript som serveres lokalt av serveren via en enkel webserver i lokalnettverket, over TLS med korrekt sertifikat.
 - Backend: Rust + Axum-tjeneste for lagring av medlemmer, generering av utfordringer og autorisasjonskontroll.
-- Persistens: PocketBase via backendens etablerte persistence-lag. JSON-filer i backend-data-mappen brukes fortsatt som lokal fallback når PocketBase ikke er konfigurert.
+- Persistens: Benytter pr i dag kun PocketBase. Andre databaser kan legges til senere.
 
 Aktører:
 

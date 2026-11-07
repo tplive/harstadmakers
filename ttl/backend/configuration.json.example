@@ -8,7 +8,6 @@
     "pocketbase_token": "YOUR_POCKETBASE_USER_TOKEN_HERE",
     "discord_admin_webhook_url": "<YOUR_DISCORD_URL_HERE_FOR_YOUR_ADMIN_EVENTS>",
     "discord_access_webhook_url": "<YOUR_DISCORD_URL_HERE_FOR_YOUR_ACCESS_EVENTS>",
-    "data_dir": "./data",
     "bind_address": "0.0.0.0:4433",
     "tls_certificate_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer",
     "tls_private_key_path": "/opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key",

@@ -16,8 +16,6 @@ pub struct Configuration {
     pub discord_admin_webhook_url: Option<String>,
     #[serde(default)]
     pub discord_access_webhook_url: Option<String>,
-    #[serde(default = "default_data_dir")]
-    pub data_dir: PathBuf,
     #[serde(default = "default_bind_address")]
     pub bind_address: String,
     pub tls_certificate_path: PathBuf,
@@ -72,10 +70,6 @@ impl Configuration {
 
         Ok(path)
     }
-}
-
-fn default_data_dir() -> PathBuf {
-    PathBuf::from("data")
 }
 
 fn default_bind_address() -> String {
@@ -145,7 +139,6 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(configuration.data_dir, PathBuf::from("data"));
         assert_eq!(configuration.bind_address, "0.0.0.0:3000");
         assert_eq!(configuration.relay_gpio_pin, 18);
         assert_eq!(configuration.hall_sensor_gpio_pin, 23);

@@ -85,14 +85,7 @@ impl AppState {
         notifications: DiscordNotifier,
     ) -> Result<Self> {
         // Load members from repository
-        let members = match repositories.members.load_all() {
-            Ok(members) => members,
-            Err(_error) if repositories.bootstrap_demo_member => {
-                let demo = create_demo_member();
-                vec![demo]
-            }
-            Err(error) => return Err(error),
-        };
+        let members = repositories.members.load_all()?;
 
         // Load events from repository
         let events = repositories.events.load_all()?;
@@ -384,13 +377,12 @@ mod tests {
         crypto::{
             generate_test_member_key, generate_test_server_identity, verify_server_signature,
         },
-        persistence::FileRepositories,
+        persistence::InMemoryRepositories,
     };
     use ed25519_dalek::Signer;
 
     fn temp_state() -> AppState {
-        let temp_dir = std::env::temp_dir().join(format!("harstad-makers-test-{}", Uuid::new_v4()));
-        let repositories = FileRepositories::new(temp_dir).unwrap();
+        let repositories = std::sync::Arc::new(InMemoryRepositories::new());
         AppState::new(generate_test_server_identity(), repositories.into()).unwrap()
     }
 
@@ -421,7 +413,7 @@ mod tests {
             members.push(member.clone());
         }
 
-        // Manually activate member (simulating manual edit of members.json)
+        // Manually activate member (simulating administrator activation)
         {
             let mut members = state.members.write().unwrap();
             let saved = members

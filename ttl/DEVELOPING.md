@@ -20,11 +20,9 @@ For å konfigurere ttl-api backend for å bruke denne konfigurasjonen, bruke Imp
 
 Ved registrering av member vil ID autogenereres av PocketBase og returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
 
-I JSON-filene som opprettes når man ikke bruker database heter `member_id`. Ved lagring av dørhendelser opprettes `id` automatisk, og PocketBase sin tildelte ID brukes som `DoorEvent.id`.
-
 Ved oppstart kontrollerer backend at begge collections finnes og at alle feltene over har riktig PocketBase-type. Manglende collections eller feil felttyper stopper oppstart med en konkret feilmelding.
 
-Når `POCKETBASE_URL` er satt, feiler backend dersom databasen ikke er tilgjengelig eller svarer med en feil; den faller ikke tilbake til JSON-filer.
+Backend krever en tilgjengelig PocketBase-instans.
 
 ### 2. Backend
 Start backend med
@@ -47,7 +45,7 @@ configuration. Set `tls_enabled` to `true` or `false` in the configuration
 file to choose the transport.
 
 Konfigurasjonen styrer serverens Ed25519-nøkkelstier, challenge- og
-medlemsutløp, PocketBase-tilkobling, datakatalog, bind-adresse og GPIO:
+medlemsutløp, PocketBase-tilkobling, bind-adresse og GPIO:
 
 - `relay_gpio_pin` er BCM-pinnen som driver reléet og starter lav.
 - `hall_sensor_gpio_pin` er BCM-pinnen for hall-sensoren. Den konfigureres med
@@ -58,8 +56,7 @@ medlemsutløp, PocketBase-tilkobling, datakatalog, bind-adresse og GPIO:
 
 Raspberry Pi GPIO-signalet er 3,3 V (ikke 5 V) og er ikke 5 V-tolerant.
 Relémodulen må derfor ha en 3,3 V-kompatibel inngang eller egnet nivåtilpasning.
-PocketBase brukes når `pocketbase_url` ikke er tom; ellers brukes JSON-filer i
-`data_dir`.
+PocketBase brukes for lagring for medlems-registreringer og dørhendelser.
 
 Dette starter Rust-API-et over HTTP eller HTTPS, avhengig av `tls_enabled`, på
 konfigurasjonens `bind_address`, som standardproduksjonskonfigurasjonen setter
