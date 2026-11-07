@@ -75,8 +75,8 @@
 ## Testing
 
 - [ ] Gjøre frontendtestene kjørbare i utviklingsmiljøet.
-  - `public/ttl-crypto.test.mjs` skal kunne kjøres med Node.js.
-  - Dokumenter eventuell nødvendig Node.js-versjon og testkommando.
+  - `public/js/ttl-crypto.test.mjs` skal kunne kjøres med Deno.
+  - Dokumenter eventuell nødvendig Deno-versjon og testkommando.
 - [ ] Utvide testene for client-nonce-flyten.
 - [ ] Utvide testene for challenge-utløp.
 - [ ] Utvide testene for mocken av relé og dørlås.
