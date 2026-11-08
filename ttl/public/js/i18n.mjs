@@ -213,6 +213,153 @@ export const translations = {
     nb_no: 'Registreringen venter på godkjenning fra administrator.',
     se: 'Čáliheapmi vuordá hálddašeaddji dohkkeheami.',
   },
+  'stats.pageTitle': {
+    en: 'Harstad Makers · Statistics',
+    nb_no: 'Harstad Makers · Statistikk',
+    se: 'Harstad Makers · Statistihkka',
+  },
+  'stats.view': {
+    en: 'View statistics',
+    nb_no: 'Vis statistikk',
+    se: 'Čájet statistihka',
+  },
+  'stats.doorAccess': {
+    en: 'Door access',
+    nb_no: 'Dørtilgang',
+    se: 'Uksabeassan',
+  },
+  'stats.eyebrow': {
+    en: 'Aggregate activity',
+    nb_no: 'Aggregert aktivitet',
+    se: 'Čoahkkigeavahus',
+  },
+  'stats.heading': {
+    en: 'Door statistics',
+    nb_no: 'Dørstatistikk',
+    se: 'Uksastatistihkka',
+  },
+  'stats.description': {
+    en: 'Anonymous aggregate activity from the makerspace door. No member identities or raw events are shown.',
+    nb_no: 'Anonym, aggregert aktivitet fra døra til verkstedet. Ingen medlemsidentiteter eller råhendelser vises.',
+    se: 'Anonysa ja čoahkkujuvvon geavahus ráiddo uvssas. Miellahttuid identitehtat dahje čájehuvvon dáhpáhusat eai čájehuvvo.',
+  },
+  'stats.checking': {
+    en: 'Checking access...',
+    nb_no: 'Sjekker tilgang...',
+    se: 'Dárkkistan beassama...',
+  },
+  'stats.registerFirst': {
+    en: 'Register this browser on the door access page before viewing statistics.',
+    nb_no: 'Registrer denne nettleseren på dørtilgangssiden før du viser statistikk.',
+    se: 'Čáli dán fierpmádatloggári uksabeassansiidduin ovdal go čájet statistihka.',
+  },
+  'stats.loading': {
+    en: 'Verifying access and loading statistics...',
+    nb_no: 'Bekrefter tilgang og laster statistikk...',
+    se: 'Duođaštan beassama ja viežžan statistihka...',
+  },
+  'stats.loadFailed': {
+    en: 'Statistics could not be loaded.',
+    nb_no: 'Statistikken kunne ikke lastes inn.',
+    se: 'Statistihkka ii sáhttán viežžot.',
+  },
+  'stats.successful': {
+    en: 'Successful unlocks',
+    nb_no: 'Vellykkede opplåsinger',
+    se: 'Lihkostuvvan rahpamat',
+  },
+  'stats.failed': {
+    en: 'Failed attempts',
+    nb_no: 'Mislykkede forsøk',
+    se: 'Filahan geahččaladdamat',
+  },
+  'stats.activeMonths': {
+    en: 'Active months',
+    nb_no: 'Aktive måneder',
+    se: 'Aktiivalaš mánut',
+  },
+  'stats.allTime': {
+    en: 'All time',
+    nb_no: 'Totalt',
+    se: 'Buot áiggi',
+  },
+  'stats.recordedEvents': {
+    en: 'Recorded events',
+    nb_no: 'Registrerte hendelser',
+    se: 'Čájehuvvon dáhpáhusat',
+  },
+  'stats.withUnlocks': {
+    en: 'With at least one unlock',
+    nb_no: 'Med minst én opplåsing',
+    se: 'Unnimusat okta rahpan',
+  },
+  'stats.busiestHour': {
+    en: 'Busiest hour',
+    nb_no: 'Travleste time',
+    se: 'Eanemus geavahuvvon diibmu',
+  },
+  'stats.noUnlocks': {
+    en: 'No unlocks yet',
+    nb_no: 'Ingen opplåsinger ennå',
+    se: 'Oza rahpamat',
+  },
+  'stats.unlocks': {
+    en: 'unlocks',
+    nb_no: 'opplåsinger',
+    se: 'rahpamat',
+  },
+  'stats.monthlyTrend': {
+    en: 'Monthly trend',
+    nb_no: 'Månedlig utvikling',
+    se: 'Mánnosaš ovdáneapmi',
+  },
+  'stats.unlocksOverTime': {
+    en: 'Unlocks over time',
+    nb_no: 'Opplåsinger over tid',
+    se: 'Rahpamat áiggi mielde',
+  },
+  'stats.successfulUnlocks': {
+    en: 'Successful unlocks',
+    nb_no: 'Vellykkede opplåsinger',
+    se: 'Lihkostuvvan rahpamat',
+  },
+  'stats.dailyRhythm': {
+    en: 'Daily rhythm',
+    nb_no: 'Døgnrytme',
+    se: 'Beaivválaš ritma',
+  },
+  'stats.byTime': {
+    en: 'By time of day',
+    nb_no: 'Etter tid på døgnet',
+    se: 'Beaivvi áiggi mielde',
+  },
+  'stats.weeklyRhythm': {
+    en: 'Weekly rhythm',
+    nb_no: 'Ukerytme',
+    se: 'Vahkosaš ritma',
+  },
+  'stats.byWeekday': {
+    en: 'By day of week',
+    nb_no: 'Etter ukedag',
+    se: 'Vahkubeivvi mielde',
+  },
+  'stats.yearlyOverview': {
+    en: 'Yearly overview',
+    nb_no: 'Årsoversikt',
+    se: 'Jahkečoahkkáigeassu',
+  },
+  'stats.longTerm': {
+    en: 'Long-term activity',
+    nb_no: 'Langsiktig aktivitet',
+    se: 'Guhkesáiggi geavahus',
+  },
+  'weekday.monday': { en: 'Mon', nb_no: 'Man', se: 'Borg' },
+  'weekday.tuesday': { en: 'Tue', nb_no: 'Tir', se: 'Maŋ' },
+  'weekday.wednesday': { en: 'Wed', nb_no: 'Ons', se: 'Gask' },
+  'weekday.thursday': { en: 'Thu', nb_no: 'Tor', se: 'Duor' },
+  'weekday.friday': { en: 'Fri', nb_no: 'Fre', se: 'Bear' },
+  'weekday.saturday': { en: 'Sat', nb_no: 'Lør', se: 'Láv' },
+  'weekday.sunday': { en: 'Sun', nb_no: 'Søn', se: 'Sot' },
 };
 
 let currentLanguage = FALLBACK_LANGUAGE;

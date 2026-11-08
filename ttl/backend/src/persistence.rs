@@ -5,7 +5,7 @@ pub use pocketbase::PocketBaseRepositories;
 use anyhow::Result;
 
 use crate::configuration::Configuration;
-use crate::models::{DoorEvent, Member};
+use crate::models::{CountByLabel, DoorEvent, DoorStatistics, Member};
 
 /// Trait for member persistence operations.
 pub trait MemberRepository: Send + Sync {
@@ -21,6 +21,8 @@ pub trait MemberRepository: Send + Sync {
 pub trait EventRepository: Send + Sync {
     /// Create one event and return its repository-assigned identity.
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent>;
+    /// Return aggregate statistics without exposing raw event records.
+    fn statistics(&self) -> Result<DoorStatistics>;
 }
 
 pub struct Repositories {
@@ -110,6 +112,39 @@ impl EventRepository for std::sync::Arc<InMemoryRepositories> {
         Ok(event.clone())
     }
 
+    fn statistics(&self) -> Result<DoorStatistics> {
+        statistics_from_events(&self.events.lock().unwrap())
+    }
+
+}
+
+fn statistics_from_events(events: &[DoorEvent]) -> Result<DoorStatistics> {
+    use chrono::{DateTime, Datelike, Timelike, Utc};
+    use std::collections::BTreeMap;
+    let mut result = DoorStatistics::default();
+    let mut hours = [0_u64; 24];
+    let mut weekdays = [0_u64; 7];
+    let mut monthly = BTreeMap::new();
+    let mut yearly = BTreeMap::new();
+    for event in events {
+        let timestamp = event.timestamp.parse::<DateTime<Utc>>()?;
+        let bucket = if event.action == "unlock_door" {
+            result.successful_unlocks += 1;
+            &mut hours[timestamp.hour() as usize]
+        } else {
+            result.failed_attempts += 1;
+            continue;
+        };
+        *bucket += 1;
+        weekdays[timestamp.weekday().num_days_from_monday() as usize] += 1;
+        *monthly.entry(timestamp.format("%Y-%m").to_string()).or_insert(0) += 1;
+        *yearly.entry(timestamp.year().to_string()).or_insert(0) += 1;
+    }
+    result.by_hour = hours.iter().enumerate().map(|(i, count)| CountByLabel { label: format!("{i:02}"), count: *count }).collect();
+    result.by_weekday = weekdays.iter().enumerate().map(|(i, count)| CountByLabel { label: i.to_string(), count: *count }).collect();
+    result.monthly = monthly.into_iter().map(|(label, count)| CountByLabel { label, count }).collect();
+    result.yearly = yearly.into_iter().map(|(label, count)| CountByLabel { label, count }).collect();
+    Ok(result)
 }
 
 #[cfg(test)]

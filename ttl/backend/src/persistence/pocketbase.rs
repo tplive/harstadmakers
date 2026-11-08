@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ureq::Agent;
 
 use super::{EventRepository, MemberRepository};
-use crate::models::{DoorEvent, Member};
+use crate::models::{DoorEvent, DoorStatistics, Member};
 
 struct PocketBaseClient {
     client: Agent,
@@ -74,6 +74,27 @@ impl PocketBaseClient {
         }
     }
 
+    fn list<T: DeserializeOwned>(&self, collection: &str) -> Result<Vec<PocketBaseRecord<T>>> {
+        let mut page = 1;
+        let mut records = Vec::new();
+        loop {
+            let response = self
+                .client
+                .get(&self.url(collection))
+                .query("page", &page.to_string())
+                .query("perPage", "500")
+                .set("Authorization", &self.authorization)
+                .call();
+            let value = self.response(response)?;
+            let result: PocketBaseList<T> = serde_json::from_value(value)?;
+            records.extend(result.items);
+            if page >= result.total_pages {
+                return Ok(records);
+            }
+            page += 1;
+        }
+    }
+
     fn create_record(&self, collection: &str, payload: &Value) -> Result<Value> {
         self.response(
             self.client
@@ -101,6 +122,13 @@ struct PocketBaseRecord<T> {
     id: String,
     #[serde(flatten)]
     fields: T,
+}
+
+#[derive(Deserialize)]
+struct PocketBaseList<T> {
+    #[serde(rename = "totalPages")]
+    total_pages: u32,
+    items: Vec<PocketBaseRecord<T>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -225,5 +253,19 @@ impl EventRepository for PocketBaseEventRepository {
             action: record.fields.action,
             timestamp: record.fields.timestamp,
         })
+    }
+
+    fn statistics(&self) -> Result<DoorStatistics> {
+        let events = self
+            .client
+            .list::<PocketBaseEvent>(&self.collection)?
+            .into_iter()
+            .map(|record| DoorEvent {
+                id: record.id,
+                action: record.fields.action,
+                timestamp: record.fields.timestamp,
+            })
+            .collect::<Vec<_>>();
+        super::statistics_from_events(&events)
     }
 }

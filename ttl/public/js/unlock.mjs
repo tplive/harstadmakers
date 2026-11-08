@@ -18,4 +18,22 @@ export async function unlockDoor(memberId) {
     const errorInfo = getErrorInfo(backendError, memberId);
     throw createAppError(errorInfo.type, errorInfo.message, backendError);
   }
+
+}
+
+export async function fetchStatistics(memberId) {
+  const challenge = await requestVerifiedChallenge(memberId);
+  const serverNonceSignature = await signNonce(challenge.server_nonce);
+
+  try {
+    return await postJson('/api/stats', {
+      member_id: memberId,
+      challenge_id: challenge.challenge_id,
+      server_nonce_signature: serverNonceSignature,
+    });
+  } catch (error) {
+    const backendError = error.backendMessage || error.message;
+    const errorInfo = getErrorInfo(backendError, memberId);
+    throw createAppError(errorInfo.type, errorInfo.message, backendError);
+  }
 }

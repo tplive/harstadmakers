@@ -432,20 +432,6 @@
         "type": "text"
       },
       {
-        "cascadeDelete": false,
-        "collectionId": "pbc_3572739349",
-        "help": "",
-        "hidden": false,
-        "id": "relation1972884478",
-        "maxSelect": 0,
-        "minSelect": 0,
-        "name": "member_id",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
-      },
-      {
         "hidden": false,
         "id": "autodate2782324286",
         "name": "timestamp",

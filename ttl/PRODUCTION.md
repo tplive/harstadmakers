@@ -507,6 +507,23 @@ sudo systemctl daemon-reload
 sudo systemctl restart ttl-backend.service
 ```
 
+### Statistikk-API
+
+`POST /api/stats` krever samme medlemsautentisering som døropplåsing:
+klienten henter først en challenge fra `POST /api/challenge`, signerer
+serverens nonce og sender signaturen til `/api/stats`. Challengen brukes bare
+én gang; statistikkforespørselen aktiverer ikke dørlåsen.
+
+Responsen inneholder bare aggregerte tall: vellykkede opplåsinger, mislykkede
+forsøk, timefordeling, ukedagsfordeling, månedsfordeling og årsfordeling.
+Medlems-ID, navn, e-post og rå hendelsesposter sendes aldri til frontend.
+
+`door_events` må ha feltene `action` (text) og `timestamp` (autodate, on
+create).
+
+Backend-brukeren/tokenet må ha `list`, `view` og `create`-tilgang til
+`door_events`.
+
 ## Token-rotasjon
 
 Ved rotasjon av PocketBase-token:

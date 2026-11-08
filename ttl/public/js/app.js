@@ -25,8 +25,13 @@ import {
 
 let currentMemberId = null;
 
+function setStatisticsLinkVisible(visible) {
+  document.getElementById('stats-link').classList.toggle('hidden', !visible);
+}
+
 function showRegistrationState() {
   currentMemberId = null;
+  setStatisticsLinkVisible(false);
   setMemberId('');
   showRegistrationPanel();
   setStatus(translate('status.registrationRequired'), 'neutral');
@@ -47,7 +52,9 @@ async function checkRegistrationStatus() {
     await checkRegistration(memberId);
     setStatus(translate('status.registrationVerified'), 'success');
     showMemberPanel();
+    setStatisticsLinkVisible(true);
   } catch (error) {
+    setStatisticsLinkVisible(false);
     const errorInfo = error.type
       ? error
       : getErrorInfo(error.message, memberId);

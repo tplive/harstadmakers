@@ -15,8 +15,8 @@ use crate::{
     },
     door_lock::{DoorLock, HardwareDoorLock, MockDoorLock},
     models::{
-        ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, Member, NewMemberRequest,
-        RegistrationResponse, UnlockRequest, UnlockResponse,
+        ChallengeRecord, ChallengeRequest, ChallengeResponse, DoorEvent, DoorStatistics, Member,
+        NewMemberRequest, RegistrationResponse, StatisticsRequest, UnlockRequest, UnlockResponse,
     },
     notifications::{DiscordNotifier, NotificationChannel},
     persistence::{EventRepository, MemberRepository},
@@ -360,6 +360,37 @@ impl AppState {
             ),
             action: "unlock_door".to_string(),
         })
+    }
+
+    pub fn statistics(&self, request: StatisticsRequest) -> Result<DoorStatistics> {
+        let member = self
+            .find_member(&request.member_id)?
+            .context("member not found")?;
+        if !member.active {
+            anyhow::bail!("member is inactive and cannot view statistics");
+        }
+        let mut challenges = self.challenges.write().unwrap();
+        let challenge = challenges
+            .get(&request.challenge_id)
+            .cloned()
+            .context("challenge not found or expired")?;
+        if challenge.member_id != request.member_id {
+            anyhow::bail!("challenge does not belong to this member");
+        }
+        if Utc::now().timestamp() >= challenge.expires_at {
+            challenges.remove(&request.challenge_id);
+            anyhow::bail!("challenge has expired");
+        }
+        verify_member_signature(
+            &member.public_key_pem,
+            &challenge.nonce,
+            &request.server_nonce_signature,
+        )
+        .context("server nonce signature verification failed")?;
+        challenges.remove(&request.challenge_id);
+        drop(challenges);
+
+        self.event_repository.statistics()
     }
 
     fn record_failed_unlock_attempt(&self) -> Result<()> {

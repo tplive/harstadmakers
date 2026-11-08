@@ -10,7 +10,7 @@ use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 
 use crate::{
-    models::{ChallengeRequest, NewMemberRequest, UnlockRequest},
+    models::{ChallengeRequest, NewMemberRequest, StatisticsRequest, UnlockRequest},
     state::AppState,
 };
 
@@ -25,9 +25,27 @@ pub fn app_router(state: AppState) -> Router {
         .route("/api/members", post(create_member_handler))
         .route("/api/challenge", post(challenge_handler))
         .route("/api/door/unlock", post(unlock_handler))
+        .route("/api/stats", post(statistics_handler))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
+}
+
+async fn statistics_handler(
+    State(state): State<AppState>,
+    Json(payload): Json<StatisticsRequest>,
+) -> impl IntoResponse {
+    info!("statistics requested");
+    match state.statistics(payload) {
+        Ok(statistics) => (StatusCode::OK, Json(serde_json::json!(statistics))),
+        Err(error) => {
+            warn!(error = %error, "statistics request rejected");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({ "error": error.to_string() })),
+            )
+        }
+    }
 }
 
 async fn health() -> impl IntoResponse {

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="stats.pageTitle">Harstad Makers · Statistics</title>
+    <link rel="stylesheet" href="./styles.css?v=20261108" />
+  </head>
+  <body class="stats-page">
+    <header class="topbar">
+      <a class="brand brand-link" href="./index.html">
+        <span class="dot"></span>
+        <h1>Harstad Makers</h1>
+      </a>
+      <a class="subtle-button" href="./index.html" data-i18n="stats.doorAccess">Door access</a>
+      <label class="language-selector">
+        <span data-i18n="language.label">Language</span>
+        <select id="language-select" aria-label="Language" data-i18n-aria-label="language.label">
+          <option value="en">English</option>
+          <option value="nb_no">Norsk bokmål</option>
+          <option value="se">Davvisámegiella</option>
+        </select>
+      </label>
+    </header>
+
+    <main class="stats-shell">
+      <section class="stats-intro">
+        <p class="eyebrow" data-i18n="stats.eyebrow">Aggregate activity</p>
+        <h2 data-i18n="stats.heading">Door statistics</h2>
+        <p data-i18n="stats.description">Anonymous aggregate activity from the makerspace door. No member identities or raw events are shown.</p>
+        <div id="stats-status" class="status-box neutral" data-i18n="stats.checking">Checking access...</div>
+      </section>
+
+      <section id="stats-dashboard" class="hidden" aria-live="polite">
+        <div class="stats-kpis">
+          <article class="stat-card"><span data-i18n="stats.successful">Successful unlocks</span><strong id="total-unlocks">0</strong><small data-i18n="stats.allTime">All time</small></article>
+          <article class="stat-card"><span data-i18n="stats.failed">Failed attempts</span><strong id="failed-attempts">0</strong><small data-i18n="stats.recordedEvents">Recorded events</small></article>
+          <article class="stat-card"><span data-i18n="stats.activeMonths">Active months</span><strong id="active-months">0</strong><small data-i18n="stats.withUnlocks">With at least one unlock</small></article>
+          <article class="stat-card accent"><span data-i18n="stats.busiestHour">Busiest hour</span><strong id="busiest-hour">—</strong><small id="busiest-hour-count" data-i18n="stats.noUnlocks">No unlocks yet</small></article>
+        </div>
+
+        <div class="stats-grid">
+          <article class="chart-card chart-card-wide">
+            <div class="chart-heading"><div><p class="card-label" data-i18n="stats.monthlyTrend">Monthly trend</p><h3 data-i18n="stats.unlocksOverTime">Unlocks over time</h3></div><span class="chart-note" data-i18n="stats.successfulUnlocks">Successful unlocks</span></div>
+            <div id="monthly-chart" class="bar-chart monthly-chart" role="img" aria-label="Monthly unlocks"></div>
+          </article>
+          <article class="chart-card">
+            <div class="chart-heading"><div><p class="card-label" data-i18n="stats.dailyRhythm">Daily rhythm</p><h3 data-i18n="stats.byTime">By time of day</h3></div></div>
+            <div id="hour-chart" class="bar-chart hour-chart" role="img" aria-label="Unlocks by hour"></div>
+          </article>
+          <article class="chart-card">
+            <div class="chart-heading"><div><p class="card-label" data-i18n="stats.weeklyRhythm">Weekly rhythm</p><h3 data-i18n="stats.byWeekday">By day of week</h3></div></div>
+            <div id="weekday-chart" class="bar-chart weekday-chart" role="img" aria-label="Unlocks by weekday"></div>
+          </article>
+          <article class="chart-card chart-card-wide">
+            <div class="chart-heading"><div><p class="card-label" data-i18n="stats.yearlyOverview">Yearly overview</p><h3 data-i18n="stats.longTerm">Long-term activity</h3></div></div>
+            <div id="yearly-chart" class="bar-chart yearly-chart" role="img" aria-label="Yearly unlocks"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./js/stats.mjs"></script>
+  </body>
+</html>

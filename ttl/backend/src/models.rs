@@ -21,6 +21,22 @@ pub struct DoorEvent {
     pub timestamp: String,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct DoorStatistics {
+    pub successful_unlocks: u64,
+    pub failed_attempts: u64,
+    pub by_hour: Vec<CountByLabel>,
+    pub by_weekday: Vec<CountByLabel>,
+    pub monthly: Vec<CountByLabel>,
+    pub yearly: Vec<CountByLabel>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CountByLabel {
+    pub label: String,
+    pub count: u64,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChallengeRecord {
     pub member_id: String,
@@ -67,6 +83,13 @@ pub struct ChallengeResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnlockRequest {
+    pub member_id: String,
+    pub challenge_id: String,
+    pub server_nonce_signature: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StatisticsRequest {
     pub member_id: String,
     pub challenge_id: String,
     pub server_nonce_signature: String,
