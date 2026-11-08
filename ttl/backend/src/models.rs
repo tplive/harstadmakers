@@ -17,7 +17,6 @@ pub struct Member {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DoorEvent {
     pub id: String,
-    pub member_id: String,
     pub action: String,
     pub timestamp: String,
 }

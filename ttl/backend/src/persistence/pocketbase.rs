@@ -116,7 +116,6 @@ struct PocketBaseMember {
 
 #[derive(Serialize, Deserialize)]
 struct PocketBaseEvent {
-    member_id: String,
     action: String,
     timestamp: String,
 }
@@ -216,7 +215,6 @@ pub(crate) struct PocketBaseEventRepository {
 impl EventRepository for PocketBaseEventRepository {
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent> {
         let payload = json!({
-            "member_id": event.member_id,
             "action": event.action,
         });
         let response = self.client.create_record(&self.collection, &payload)?;
@@ -224,7 +222,6 @@ impl EventRepository for PocketBaseEventRepository {
             .context("PocketBase returned an invalid door event record")?;
         Ok(DoorEvent {
             id: record.id,
-            member_id: record.fields.member_id,
             action: record.fields.action,
             timestamp: record.fields.timestamp,
         })

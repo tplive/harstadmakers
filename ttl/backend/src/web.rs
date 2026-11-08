@@ -62,7 +62,7 @@ async fn challenge_handler(
     State(state): State<AppState>,
     Json(payload): Json<ChallengeRequest>,
 ) -> impl IntoResponse {
-    info!(member_id = %payload.member_id, "challenge requested");
+    info!("challenge requested");
     match state.generate_challenge(payload) {
         Ok(response) => (
             StatusCode::OK,
@@ -83,7 +83,6 @@ async fn unlock_handler(
     Json(payload): Json<UnlockRequest>,
 ) -> impl IntoResponse {
     info!(
-        member_id = %payload.member_id,
         challenge_id = %payload.challenge_id,
         "door unlock requested"
     );
