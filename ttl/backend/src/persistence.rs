@@ -9,22 +9,18 @@ use crate::models::{DoorEvent, Member};
 
 /// Trait for member persistence operations.
 pub trait MemberRepository: Send + Sync {
-    /// Load all members from the repository.
-    fn load_all(&self) -> Result<Vec<Member>>;
+    /// Load one member by its repository ID.
+    fn find_by_id(&self, member_id: &str) -> Result<Option<Member>>;
     /// Create or persist one member and return its repository-assigned identity.
     fn save_member(&self, member: &Member) -> Result<Member>;
-    /// Save all members to the repository.
-    fn save_all(&self, members: &[Member]) -> Result<()>;
+    /// Update one existing member.
+    fn update_member(&self, member: &Member) -> Result<()>;
 }
 
 /// Trait for door event persistence operations.
 pub trait EventRepository: Send + Sync {
-    /// Load all door events from the repository.
-    fn load_all(&self) -> Result<Vec<DoorEvent>>;
     /// Create one event and return its repository-assigned identity.
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent>;
-    /// Save all door events to the repository.
-    fn save_all(&self, events: &[DoorEvent]) -> Result<()>;
 }
 
 pub struct Repositories {
@@ -78,8 +74,14 @@ impl InMemoryRepositories {
 
 #[cfg(test)]
 impl MemberRepository for std::sync::Arc<InMemoryRepositories> {
-    fn load_all(&self) -> Result<Vec<Member>> {
-        Ok(self.members.lock().unwrap().clone())
+    fn find_by_id(&self, member_id: &str) -> Result<Option<Member>> {
+        Ok(self
+            .members
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|member| member.id == member_id)
+            .cloned())
     }
 
     fn save_member(&self, member: &Member) -> Result<Member> {
@@ -87,27 +89,27 @@ impl MemberRepository for std::sync::Arc<InMemoryRepositories> {
         Ok(member.clone())
     }
 
-    fn save_all(&self, members: &[Member]) -> Result<()> {
-        *self.members.lock().unwrap() = members.to_vec();
+    fn update_member(&self, member: &Member) -> Result<()> {
+        if let Some(existing) = self
+            .members
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .find(|existing| existing.id == member.id)
+        {
+            *existing = member.clone();
+        }
         Ok(())
     }
 }
 
 #[cfg(test)]
 impl EventRepository for std::sync::Arc<InMemoryRepositories> {
-    fn load_all(&self) -> Result<Vec<DoorEvent>> {
-        Ok(self.events.lock().unwrap().clone())
-    }
-
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent> {
         self.events.lock().unwrap().push(event.clone());
         Ok(event.clone())
     }
 
-    fn save_all(&self, events: &[DoorEvent]) -> Result<()> {
-        *self.events.lock().unwrap() = events.to_vec();
-        Ok(())
-    }
 }
 
 #[cfg(test)]

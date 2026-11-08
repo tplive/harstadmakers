@@ -34,10 +34,6 @@ impl PocketBaseClient {
         format!("{}/api/collections/{collection}/records", self.base_url)
     }
 
-    fn request(&self, request: ureq::Request) -> Result<Value> {
-        self.response(request.set("Authorization", &self.authorization).call())
-    }
-
     fn response(&self, response: Result<ureq::Response, ureq::Error>) -> Result<Value> {
         let response = match response {
             Ok(response) => response,
@@ -63,29 +59,19 @@ impl PocketBaseClient {
         }
     }
 
-    fn list<T: DeserializeOwned>(&self, collection: &str) -> Result<Vec<PocketBaseRecord<T>>> {
-        let mut page_number = 1;
-        let mut records = Vec::new();
-        loop {
-            let response = self.request(
-                self.client
-                    .get(&self.url(collection))
-                    .query("page", &page_number.to_string())
-                    .query("perPage", "500"),
-            )?;
-            let result: PocketBaseList<T> = serde_json::from_value(response)?;
-            let last_page = result.page >= result.total_pages;
-            records.extend(result.items);
-            if last_page {
-                return Ok(records);
-            }
-            page_number += 1;
+    fn get_record<T: DeserializeOwned>(
+        &self,
+        collection: &str,
+        record_id: &str,
+    ) -> Result<Option<PocketBaseRecord<T>>> {
+        let response = self
+            .client
+            .get(&format!("{}/{}", self.url(collection), record_id));
+        match response.set("Authorization", &self.authorization).call() {
+            Ok(response) => Ok(Some(serde_json::from_value(self.response(Ok(response))?)?)),
+            Err(ureq::Error::Status(404, _)) => Ok(None),
+            Err(error) => Err(anyhow::Error::new(error).context("failed to find PocketBase record")),
         }
-    }
-
-    fn create(&self, collection: &str, payload: &Value) -> Result<()> {
-        self.create_record(collection, payload)?;
-        Ok(())
     }
 
     fn create_record(&self, collection: &str, payload: &Value) -> Result<Value> {
@@ -108,14 +94,6 @@ impl PocketBaseClient {
         )?;
         Ok(())
     }
-}
-
-#[derive(Deserialize)]
-struct PocketBaseList<T> {
-    page: u32,
-    #[serde(rename = "totalPages")]
-    total_pages: u32,
-    items: Vec<PocketBaseRecord<T>>,
 }
 
 #[derive(Deserialize)]
@@ -174,13 +152,13 @@ pub(crate) struct PocketBaseMemberRepository {
 }
 
 impl MemberRepository for PocketBaseMemberRepository {
-    fn load_all(&self) -> Result<Vec<Member>> {
-        self.client
-            .list::<PocketBaseMember>(&self.collection)?
-            .into_iter()
+    fn find_by_id(&self, member_id: &str) -> Result<Option<Member>> {
+        Ok(self
+            .client
+            .get_record::<PocketBaseMember>(&self.collection, member_id)?
             .map(|record| {
                 let fields = record.fields;
-                Ok(Member {
+                Member {
                     id: record.id,
                     name: fields.name,
                     email: fields.email,
@@ -189,9 +167,8 @@ impl MemberRepository for PocketBaseMemberRepository {
                     created_at: fields.created_at,
                     expires_at: fields.expires_at,
                     last_used: fields.last_used,
-                })
-            })
-            .collect()
+                }
+            }))
     }
 
     fn save_member(&self, member: &Member) -> Result<Member> {
@@ -218,24 +195,16 @@ impl MemberRepository for PocketBaseMemberRepository {
         })
     }
 
-    fn save_all(&self, members: &[Member]) -> Result<()> {
-        let existing = self.client.list::<PocketBaseMember>(&self.collection)?;
-        for member in members {
-            let payload = json!({
-                "name": member.name,
-                "email": member.email,
-                "public_key_pem": member.public_key_pem,
-                "active": member.active,
-                "expires_at": member.expires_at,
-                "last_used": member.last_used,
-            });
-            if let Some(record) = existing.iter().find(|record| record.id == member.id) {
-                self.client.update(&self.collection, &record.id, &payload)?;
-            } else {
-                self.client.create(&self.collection, &payload)?;
-            }
-        }
-        Ok(())
+    fn update_member(&self, member: &Member) -> Result<()> {
+        let payload = json!({
+            "name": member.name,
+            "email": member.email,
+            "public_key_pem": member.public_key_pem,
+            "active": member.active,
+            "expires_at": member.expires_at,
+            "last_used": member.last_used,
+        });
+        self.client.update(&self.collection, &member.id, &payload)
     }
 }
 
@@ -245,22 +214,6 @@ pub(crate) struct PocketBaseEventRepository {
 }
 
 impl EventRepository for PocketBaseEventRepository {
-    fn load_all(&self) -> Result<Vec<DoorEvent>> {
-        self.client
-            .list::<PocketBaseEvent>(&self.collection)?
-            .into_iter()
-            .map(|record| {
-                let fields = record.fields;
-                Ok(DoorEvent {
-                    id: record.id,
-                    member_id: fields.member_id,
-                    action: fields.action,
-                    timestamp: fields.timestamp,
-                })
-            })
-            .collect()
-    }
-
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent> {
         let payload = json!({
             "member_id": event.member_id,
@@ -275,22 +228,5 @@ impl EventRepository for PocketBaseEventRepository {
             action: record.fields.action,
             timestamp: record.fields.timestamp,
         })
-    }
-
-    fn save_all(&self, events: &[DoorEvent]) -> Result<()> {
-        let existing = self.client.list::<PocketBaseEvent>(&self.collection)?;
-        for event in events {
-            if existing.iter().any(|record| record.id == event.id) {
-                continue;
-            }
-
-            let payload = json!({
-                "member_id": event.member_id,
-                "action": event.action,
-            });
-            self.client.create(&self.collection, &payload)?;
-        }
-
-        Ok(())
     }
 }

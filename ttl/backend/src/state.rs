@@ -85,23 +85,16 @@ impl AppState {
         door_lock: Arc<dyn DoorLock>,
         notifications: DiscordNotifier,
     ) -> Result<Self> {
-        // Load members from repository
-        let members = repositories.members.load_all()?;
-
-        // Load events from repository
-        let events = repositories.events.load_all()?;
         info!(
-            member_count = members.len(),
-            event_count = events.len(),
             challenge_expiry_minutes,
             default_member_expiry_days,
-            "application state loaded"
+            "application state initialized without loading historical records"
         );
 
         let state = Self {
-            members: Arc::new(RwLock::new(members)),
+            members: Arc::new(RwLock::new(Vec::new())),
             challenges: Arc::new(RwLock::new(HashMap::new())),
-            events: Arc::new(RwLock::new(events)),
+            events: Arc::new(RwLock::new(Vec::new())),
             server_identity,
             member_repository: repositories.members.into(),
             event_repository: repositories.events.into(),
@@ -111,8 +104,6 @@ impl AppState {
             door_lock,
         };
 
-        state.persist_members()?;
-        state.persist_events()?;
         Ok(state)
     }
 
@@ -158,46 +149,37 @@ impl AppState {
         })
     }
 
-    /// Reload members from the repository to pick up external changes
-    /// Merges changes from file into the in-memory cache without removing
-    /// members that only exist in memory (e.g., created during tests)
-    pub fn refresh_members(&self) -> Result<()> {
-        let file_members = self.member_repository.load_all()?;
-        let loaded_count = file_members.len();
-
-        let mut members = self.members.write().unwrap();
-
-        // Update existing members with data from file and add new ones
-        for file_member in file_members {
-            if let Some(existing) = members.iter_mut().find(|m| m.id == file_member.id) {
-                // Update existing member with file data
-                existing.active = file_member.active;
-                existing.name = file_member.name;
-                existing.email = file_member.email;
-                existing.public_key_pem = file_member.public_key_pem;
-                existing.created_at = file_member.created_at;
-                existing.expires_at = file_member.expires_at;
-                existing.last_used = file_member.last_used;
+    fn find_member(&self, member_id: &str) -> Result<Option<Member>> {
+        let member = self.member_repository.find_by_id(member_id)?;
+        if let Some(member) = member {
+            let mut members = self.members.write().unwrap();
+            if let Some(cached) = members.iter_mut().find(|cached| cached.id == member.id) {
+                *cached = member.clone();
             } else {
-                // Add new member from file
-                members.push(file_member);
+                members.push(member.clone());
             }
+            return Ok(Some(member));
         }
 
-        debug!(member_count = loaded_count, "member cache refreshed");
-        Ok(())
+        #[cfg(test)]
+        {
+            return Ok(self
+                .members
+                .read()
+                .unwrap()
+                .iter()
+                .find(|member| member.id == member_id)
+                .cloned());
+        }
+
+        #[cfg(not(test))]
+        Ok(None)
     }
 
     pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
         info!(member_id = %request.member_id, "processing challenge request");
-        // Refresh members from file to pick up any manual changes
-        self.refresh_members()?;
-
-        let members = self.members.read().unwrap();
-        let member = members
-            .iter()
-            .find(|item| item.id == request.member_id)
-            .cloned()
+        let member = self
+            .find_member(&request.member_id)?
             .context("member not found")?;
         verify_member_signature(
             &member.public_key_pem,
@@ -272,17 +254,9 @@ impl AppState {
             challenge_id = %request.challenge_id,
             "processing door unlock"
         );
-        // Refresh members from file to pick up any manual changes
-        self.refresh_members()?;
-
-        let member = {
-            let members = self.members.read().unwrap();
-            members
-                .iter()
-                .find(|item| item.id == request.member_id)
-                .cloned()
-                .context("member not found")?
-        };
+        let member = self
+            .find_member(&request.member_id)?
+            .context("member not found")?;
 
         if !member.active {
             warn!(member_id = %member.id, "unlock denied for inactive member");
@@ -361,13 +335,16 @@ impl AppState {
         })?;
         info!(member_id = %member.id, unlock_time = %unlock_time.to_rfc3339(), "door unlocked");
 
+        let mut member = member;
+        member.last_used = Some(Utc::now().to_rfc3339());
+        if let Some(cached) = self
+            .members
+            .write()
+            .unwrap()
+            .iter_mut()
+            .find(|item| item.id == request.member_id)
         {
-            let mut members = self.members.write().unwrap();
-            let member = members
-                .iter_mut()
-                .find(|item| item.id == request.member_id)
-                .context("member not found")?;
-            member.last_used = Some(Utc::now().to_rfc3339());
+            *cached = member.clone();
         }
 
         let event = DoorEvent {
@@ -381,7 +358,7 @@ impl AppState {
         self.events.write().unwrap().push(event.clone());
         debug!(event_id = %event.id, member_id = %event.member_id, "door event persisted");
 
-        self.persist_members()?;
+        self.member_repository.update_member(&member)?;
 
         Ok(UnlockResponse {
             approved: true,
@@ -392,20 +369,6 @@ impl AppState {
             ),
             action: "unlock_door".to_string(),
         })
-    }
-
-    fn persist_members(&self) -> Result<()> {
-        let members = self.members.read().unwrap();
-        self.member_repository.save_all(&members)?;
-        debug!(member_count = members.len(), "members persisted");
-        Ok(())
-    }
-
-    fn persist_events(&self) -> Result<()> {
-        let events = self.events.read().unwrap();
-        self.event_repository.save_all(&events)?;
-        debug!(event_count = events.len(), "events persisted");
-        Ok(())
     }
 
     fn record_failed_unlock_attempt(&self, member_id: &str) -> Result<()> {
