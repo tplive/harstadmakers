@@ -1,6 +1,7 @@
 use std::{fmt, time::Duration};
 
 use anyhow::{Context, Result};
+use tracing::{debug, warn};
 
 use crate::configuration::Configuration;
 
@@ -106,9 +107,18 @@ impl DiscordNotifier {
         let response = agent
             .post(&webhook_url)
             .send_json(&payload)
-            .with_context(|| format!("failed to deliver Discord notification to {channel}"))?;
+            .with_context(|| {
+                warn!(channel = %channel, kind = %kind, "Discord notification request failed");
+                format!("failed to deliver Discord notification to {channel}")
+            })?;
 
         if !(200..=299).contains(&response.status()) {
+            warn!(
+                channel = %channel,
+                kind = %kind,
+                status = response.status(),
+                "Discord rejected notification"
+            );
             anyhow::bail!(
                 "Discord webhook returned HTTP {} while sending notification to {}",
                 response.status(),
@@ -116,6 +126,7 @@ impl DiscordNotifier {
             );
         }
 
+        debug!(channel = %channel, kind = %kind, "Discord notification sent");
         Ok(())
     }
 

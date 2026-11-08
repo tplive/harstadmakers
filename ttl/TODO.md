@@ -8,7 +8,7 @@
   - Serveren skal verifisere signaturen med registrert offentlig nøkkel.
 - [x] Implementere utløp og kontroll av challenge etter fem minutter.
 - [x] Sikre at serveren genererer en ny, engangs challenge for hvert opplåsingsforsøk.
-- [ ] Avvise gjenbruk av en challenge etter en vellykket opplåsing.
+- [x] Avvise gjenbruk av en challenge etter en vellykket opplåsing.
 - [ ] Verifisere challenge- og nonce-reglene med automatiserte tester.
 - [x] Implementere relé- og dørlåsmodulen.
   - Bruk en mock av relé og dørlås inntil fysisk maskinvareintegrasjon er klar.
@@ -48,10 +48,10 @@
 
 ## Logging og hemmeligheter
 
-- [ ] Slutte å skrive private nøkler eller annet sensitivt registreringsmateriale til stdout.
-- [ ] Logge registrering, aktivering, challenge-forespørsler og opplåsingsforsøk.
-- [ ] Inkludere tidsstempel og målrettet medlems-ID i revisjonslogger.
-- [ ] Overvåke mislykkede opplåsinger og gjentatte challenge-forespørsler.
+- [x] Slutte å skrive private nøkler eller annet sensitivt registreringsmateriale til stdout.
+- [x] Logge registrering, aktivering, challenge-forespørsler og opplåsingsforsøk.
+- [x] Inkludere tidsstempel og målrettet medlems-ID i revisjonslogger.
+- [x] Overvåke mislykkede opplåsinger og gjentatte challenge-forespørsler.
 - [ ] Oppbevare SSH-nøkler og annen serveridentitet kun på Raspberry Pi-en.
 
 ## Vertssikring og fysisk sikkerhet

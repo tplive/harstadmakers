@@ -239,6 +239,16 @@ ps -o user= -C pocketbase
 
 ### Servicedefinisjoner
 
+Backend logger til standard output. Når tjenesten kjører som systemd service, vil `RUST_LOG` logge API forespørsler, autentisering og challenge, forespørsler om å låse opp døra, datalagringshendelser og Discord notification statuser. Vi passer på å ikke logge private nøkler, signaturer, noncer, webhook tokens og personlig informasjon.
+
+Se loggen live med:
+
+```bash
+sudo journalctl -fu ttl-api.service
+```
+
+Bruk `RUST_LOG=ttl_api=debug,tower_http=info` midlertidig for å debugging. Ikke kjør som debug i produksjon.
+
 1. Lag servicedefinisjoner for hver tjeneste (pocketbase, ttl-api, ttl-frontend) i hhv.
    * `/etc/systemd/system/pocketbase.service`
    * `/etc/systemd/system/ttl-api.service`

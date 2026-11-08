@@ -8,6 +8,7 @@ User=svc-ttl-api
 Group=svc-ttl-api
 WorkingDirectory=/srv/ttl-api
 ExecStart=/srv/ttl-api/ttl-api
+Environment=RUST_LOG=ttl_api=info,tower_http=info
 Restart=on-failure
 RestartSec=5
 

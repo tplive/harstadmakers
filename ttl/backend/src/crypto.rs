@@ -5,6 +5,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::Rng;
 use ssh_key::{private::KeypairData, PrivateKey};
 use std::{fs, path::Path};
+use tracing::info;
 
 use crate::models::Member;
 
@@ -50,8 +51,7 @@ impl ServerIdentity {
 pub fn create_demo_member() -> Member {
     let signing_key = SigningKey::from_bytes(&rand::random());
     let public_key = encode_ssh_ed25519_public_key(&signing_key.verifying_key());
-    println!("Demo member ID: demo-member");
-    println!("Demo member public key registered in the app:\n{public_key}");
+    info!("demo member initialized");
     Member {
         id: "demo-member".to_string(),
         name: "Demo Member".to_string(),
@@ -132,7 +132,7 @@ fn encode_ssh_ed25519_public_key(key: &VerifyingKey) -> String {
     wire.extend_from_slice(algorithm);
     wire.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
     wire.extend_from_slice(&bytes);
-    format!("ssh-ed25519 {} harstad-makers", BASE64.encode(wire))
+    format!("ssh-ed25519 {} TTL", BASE64.encode(wire))
 }
 
 #[cfg(test)]

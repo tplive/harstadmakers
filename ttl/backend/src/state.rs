@@ -5,11 +5,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 use uuid::Uuid;
+use tracing::{debug, error, info, warn};
 
 use crate::{
     configuration::Configuration,
     crypto::{
-        create_demo_member, normalize_public_key_pem, random_nonce, verify_member_signature,
+        normalize_public_key_pem, random_nonce, verify_member_signature,
         ServerIdentity,
     },
     door_lock::{DoorLock, HardwareDoorLock, MockDoorLock},
@@ -89,6 +90,13 @@ impl AppState {
 
         // Load events from repository
         let events = repositories.events.load_all()?;
+        info!(
+            member_count = members.len(),
+            event_count = events.len(),
+            challenge_expiry_minutes,
+            default_member_expiry_days,
+            "application state loaded"
+        );
 
         let state = Self {
             members: Arc::new(RwLock::new(members)),
@@ -109,6 +117,7 @@ impl AppState {
     }
 
     pub fn add_member(&self, payload: NewMemberRequest) -> Result<RegistrationResponse> {
+        info!("creating member registration");
         let public_key_pem =
             normalize_public_key_pem(payload.public_key_pem, payload.public_key_jwk)
                 .context("invalid Ed25519 public key. Provide an OpenSSH key or browser JWK.")?;
@@ -126,14 +135,20 @@ impl AppState {
         };
 
         let member = self.member_repository.save_member(&member)?;
+        info!(member_id = %member.id, "member registration persisted");
         {
             let mut members = self.members.write().unwrap();
             members.push(member.clone());
         }
 
-        let _ = self
+        if let Err(error) = self
             .notifications
-            .notify_registration(&member.id, &member.name, &member.email);
+            .notify_registration(&member.id, &member.name, &member.email)
+        {
+            warn!(member_id = %member.id, error = %error, "registration notification failed");
+        } else {
+            debug!(member_id = %member.id, "registration notification sent");
+        }
 
         Ok(RegistrationResponse {
             member,
@@ -148,6 +163,7 @@ impl AppState {
     /// members that only exist in memory (e.g., created during tests)
     pub fn refresh_members(&self) -> Result<()> {
         let file_members = self.member_repository.load_all()?;
+        let loaded_count = file_members.len();
 
         let mut members = self.members.write().unwrap();
 
@@ -168,10 +184,12 @@ impl AppState {
             }
         }
 
+        debug!(member_count = loaded_count, "member cache refreshed");
         Ok(())
     }
 
     pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
+        info!(member_id = %request.member_id, "processing challenge request");
         // Refresh members from file to pick up any manual changes
         self.refresh_members()?;
 
@@ -186,26 +204,33 @@ impl AppState {
             &request.client_nonce,
             &request.client_nonce_signature,
         )
-        .context("client nonce signature verification failed")?;
+        .context("client nonce signature verification failed")
+        .inspect_err(|error| {
+            warn!(member_id = %member.id, error = %error, "client nonce signature rejected");
+        })?;
 
         let expires_at = DateTime::parse_from_rfc3339(&member.expires_at)
             .context("member expiration timestamp is invalid")?
             .with_timezone(&Utc);
         if expires_at <= Utc::now() {
+            warn!(member_id = %member.id, "challenge denied for expired member");
             anyhow::bail!(
                 "medlemsregistreringen har utløpt og er deaktivert; vennligst kontakt administrator for reaktivering"
             );
         }
 
         if !member.active {
+            warn!(member_id = %member.id, "challenge denied for inactive member");
             anyhow::bail!("member is inactive and cannot request a door challenge");
         }
 
-        let (challenge_id, nonce) = {
+        let (challenge_id, nonce, challenge_expires_at) = {
             let mut challenges = self.challenges.write().unwrap();
             loop {
                 let challenge_id = Uuid::new_v4().to_string();
                 let nonce = random_nonce();
+                let challenge_expires_at =
+                    Utc::now() + chrono::Duration::minutes(self.challenge_expiry_minutes);
                 let id_is_unique = !challenges.contains_key(&challenge_id);
                 let nonce_is_unique = !challenges
                     .values()
@@ -217,16 +242,20 @@ impl AppState {
                         ChallengeRecord {
                             member_id: member.id.clone(),
                             nonce: nonce.clone(),
-                            expires_at: (Utc::now()
-                                + chrono::Duration::minutes(self.challenge_expiry_minutes))
-                            .timestamp(),
+                            expires_at: challenge_expires_at.timestamp(),
                         },
                     );
-                    break (challenge_id, nonce);
+                    break (challenge_id, nonce, challenge_expires_at);
                 }
             }
         };
 
+        info!(
+            member_id = %member.id,
+            challenge_id = %challenge_id,
+            expires_at = %challenge_expires_at.to_rfc3339(),
+            "challenge created"
+        );
         Ok(ChallengeResponse {
             challenge_id,
             member_id: member.id,
@@ -238,6 +267,11 @@ impl AppState {
     }
 
     pub fn unlock_door(&self, request: UnlockRequest) -> Result<UnlockResponse> {
+        info!(
+            member_id = %request.member_id,
+            challenge_id = %request.challenge_id,
+            "processing door unlock"
+        );
         // Refresh members from file to pick up any manual changes
         self.refresh_members()?;
 
@@ -251,52 +285,81 @@ impl AppState {
         };
 
         if !member.active {
+            warn!(member_id = %member.id, "unlock denied for inactive member");
             self.record_failed_unlock_attempt(&member.id)?;
             anyhow::bail!("member is inactive and cannot unlock the door");
         }
 
-        let challenge = match {
-            let challenges = self.challenges.read().unwrap();
-            challenges.get(&request.challenge_id).cloned()
-        } {
-            Some(challenge) => challenge,
-            None => {
-                self.record_failed_unlock_attempt(&member.id)?;
-                anyhow::bail!("challenge not found or expired");
-            }
-        };
-
-        if challenge.member_id != request.member_id {
-            self.record_failed_unlock_attempt(&member.id)?;
-            anyhow::bail!("challenge does not belong to this member");
-        }
-
-        if Utc::now().timestamp() >= challenge.expires_at {
-            self.challenges
-                .write()
-                .unwrap()
-                .remove(&request.challenge_id);
-            self.record_failed_unlock_attempt(&member.id)?;
-            anyhow::bail!("challenge has expired");
-        }
-
-        if verify_member_signature(
-            &member.public_key_pem,
-            &challenge.nonce,
-            &request.server_nonce_signature,
-        )
-        .is_err()
         {
-            self.record_failed_unlock_attempt(&member.id)?;
-            anyhow::bail!("server nonce signature verification failed");
-        }
+            let mut challenges = self.challenges.write().unwrap();
+            let challenge = match challenges.get(&request.challenge_id).cloned() {
+                Some(challenge) => challenge,
+                None => {
+                    self.record_failed_unlock_attempt(&member.id)?;
+                    warn!(
+                        member_id = %member.id,
+                        challenge_id = %request.challenge_id,
+                        "unlock denied because challenge was not found"
+                    );
+                    anyhow::bail!("challenge not found or expired");
+                }
+            };
 
-        let mut challenges = self.challenges.write().unwrap();
-        challenges.remove(&request.challenge_id);
-        drop(challenges);
+            if challenge.member_id != request.member_id {
+                self.record_failed_unlock_attempt(&member.id)?;
+                warn!(
+                    member_id = %member.id,
+                    challenge_id = %request.challenge_id,
+                    "unlock denied because challenge belongs to another member"
+                );
+                anyhow::bail!("challenge does not belong to this member");
+            }
+
+            if Utc::now().timestamp() >= challenge.expires_at {
+                challenges.remove(&request.challenge_id);
+                self.record_failed_unlock_attempt(&member.id)?;
+                warn!(
+                    member_id = %member.id,
+                    challenge_id = %request.challenge_id,
+                    "unlock denied because challenge expired"
+                );
+                anyhow::bail!("challenge has expired");
+            }
+
+            if verify_member_signature(
+                &member.public_key_pem,
+                &challenge.nonce,
+                &request.server_nonce_signature,
+            )
+            .is_err()
+            {
+                self.record_failed_unlock_attempt(&member.id)?;
+                warn!(
+                    member_id = %member.id,
+                    challenge_id = %request.challenge_id,
+                    "unlock denied because server nonce signature was invalid"
+                );
+                anyhow::bail!("server nonce signature verification failed");
+            }
+
+            challenges.remove(&request.challenge_id);
+        }
+        info!(
+            member_id = %member.id,
+            challenge_id = %request.challenge_id,
+            "challenge consumed for unlock"
+        );
 
         // Activate the door lock relay
-        let unlock_time = self.door_lock.unlock()?;
+        let unlock_time = self.door_lock.unlock().inspect_err(|error| {
+            error!(
+                member_id = %member.id,
+                challenge_id = %request.challenge_id,
+                error = %error,
+                "door lock activation failed"
+            );
+        })?;
+        info!(member_id = %member.id, unlock_time = %unlock_time.to_rfc3339(), "door unlocked");
 
         {
             let mut members = self.members.write().unwrap();
@@ -316,6 +379,7 @@ impl AppState {
 
         let event = self.event_repository.save_event(&event)?;
         self.events.write().unwrap().push(event.clone());
+        debug!(event_id = %event.id, member_id = %event.member_id, "door event persisted");
 
         self.persist_members()?;
 
@@ -333,12 +397,14 @@ impl AppState {
     fn persist_members(&self) -> Result<()> {
         let members = self.members.read().unwrap();
         self.member_repository.save_all(&members)?;
+        debug!(member_count = members.len(), "members persisted");
         Ok(())
     }
 
     fn persist_events(&self) -> Result<()> {
         let events = self.events.read().unwrap();
         self.event_repository.save_all(&events)?;
+        debug!(event_count = events.len(), "events persisted");
         Ok(())
     }
 
@@ -351,7 +417,12 @@ impl AppState {
         };
         let event = self.event_repository.save_event(&event)?;
         self.events.write().unwrap().push(event.clone());
-        let _ = self.notifications.notify_with_kind(
+        warn!(
+            member_id = %member_id,
+            event_id = %event.id,
+            "failed unlock attempt recorded"
+        );
+        if let Err(error) = self.notifications.notify_with_kind(
             NotificationChannel::Admin,
             crate::notifications::NotificationKind::Error,
             "Failed unlock attempt",
@@ -360,7 +431,9 @@ impl AppState {
                 member_id,
                 event.timestamp
             ),
-        );
+        ) {
+            warn!(member_id = %member_id, error = %error, "failed unlock notification could not be sent");
+        }
         Ok(())
     }
 
@@ -375,9 +448,8 @@ mod tests {
     use super::*;
     use crate::{
         crypto::{
-            generate_test_member_key, generate_test_server_identity, verify_server_signature,
-        },
-        persistence::InMemoryRepositories,
+            create_demo_member, generate_test_member_key, generate_test_server_identity, verify_server_signature,
+        }, persistence::InMemoryRepositories,
     };
     use ed25519_dalek::Signer;
 
@@ -644,6 +716,48 @@ mod tests {
         let members = state.members.read().unwrap();
         let saved = members.iter().find(|item| item.id == member.id).unwrap();
         assert!(saved.last_used.is_some());
+    }
+
+    #[test]
+    fn successful_unlock_rejects_reuse_of_challenge() {
+        let state = temp_state();
+        let (member_key, member_public_key) = generate_test_member_key();
+        let member = Member {
+            id: "single-use-challenge-member".to_string(),
+            name: "Single Use Challenge Member".to_string(),
+            email: "single-use@harstadmakers.no".to_string(),
+            public_key_pem: member_public_key,
+            active: true,
+            created_at: Utc::now().to_rfc3339(),
+            expires_at: (Utc::now() + chrono::Duration::days(365)).to_rfc3339(),
+            last_used: None,
+        };
+        state.members.write().unwrap().push(member.clone());
+
+        let challenge_id = Uuid::new_v4().to_string();
+        let nonce = "single-use-challenge-nonce".to_string();
+        state.challenges.write().unwrap().insert(
+            challenge_id.clone(),
+            ChallengeRecord {
+                member_id: member.id.clone(),
+                nonce: nonce.clone(),
+                expires_at: (Utc::now() + chrono::Duration::minutes(5)).timestamp(),
+            },
+        );
+
+        let request = UnlockRequest {
+            member_id: member.id,
+            challenge_id,
+            server_nonce_signature: base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                member_key.sign(nonce.as_bytes()).to_bytes(),
+            ),
+        };
+
+        assert!(state.unlock_door(request.clone()).is_ok());
+        assert!(state.unlock_door(request).is_err());
+        assert!(state.challenges.read().unwrap().is_empty());
+        assert_eq!(state.events.read().unwrap().len(), 2);
     }
 
     #[test]
