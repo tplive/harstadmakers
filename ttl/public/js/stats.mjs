@@ -39,6 +39,7 @@ function renderStatistics(statistics) {
   currentStatistics = statistics;
   document.getElementById('total-unlocks').textContent = statistics.successful_unlocks;
   document.getElementById('failed-attempts').textContent = statistics.failed_attempts;
+  document.getElementById('relay-failures').textContent = statistics.relay_failures ?? 0;
   document.getElementById('active-months').textContent = statistics.monthly.filter((item) => item.count > 0).length;
   const busiest = statistics.by_hour.reduce((best, item) => item.count > best.count ? item : best, { label: '—', count: 0 });
   document.getElementById('busiest-hour').textContent = busiest.count ? `${busiest.label}:00` : '—';

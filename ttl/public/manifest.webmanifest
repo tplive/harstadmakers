@@ -1,0 +1,22 @@
+{
+  "name": "Harstad Makers",
+  "short_name": "Harstad Makers",
+  "description": "Door access and aggregate activity statistics for Harstad Makers.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffaf0",
+  "theme_color": "#4f83d1",
+  "icons": [
+    {
+      "src": "./img/icons/android-chrome-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./img/icons/android-chrome-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -273,6 +273,21 @@ export const translations = {
     nb_no: 'Mislykkede forsøk',
     se: 'Filahan geahččaladdamat',
   },
+  'stats.denied': {
+    en: 'Denied attempts',
+    nb_no: 'Avviste forsøk',
+    se: 'Hilggojuvvon geahččaladdamat',
+  },
+  'stats.relayFailures': {
+    en: 'Relay failures',
+    nb_no: 'Reléfeil',
+    se: 'Releafiltii',
+  },
+  'stats.systemEvents': {
+    en: 'Door hardware events',
+    nb_no: 'Dørmaskinvarehendelser',
+    se: 'Uksareaidodáhpáhusat',
+  },
   'stats.activeMonths': {
     en: 'Active months',
     nb_no: 'Aktive måneder',

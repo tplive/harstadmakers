@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title data-i18n="stats.pageTitle">Harstad Makers · Statistics</title>
+    <link rel="icon" href="./favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./img/icons/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./img/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./img/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css?v=20261108" />
   </head>
   <body class="stats-page">
@@ -34,7 +39,8 @@
       <section id="stats-dashboard" class="hidden" aria-live="polite">
         <div class="stats-kpis">
           <article class="stat-card"><span data-i18n="stats.successful">Successful unlocks</span><strong id="total-unlocks">0</strong><small data-i18n="stats.allTime">All time</small></article>
-          <article class="stat-card"><span data-i18n="stats.failed">Failed attempts</span><strong id="failed-attempts">0</strong><small data-i18n="stats.recordedEvents">Recorded events</small></article>
+          <article class="stat-card"><span data-i18n="stats.denied">Denied attempts</span><strong id="failed-attempts">0</strong><small data-i18n="stats.recordedEvents">Recorded events</small></article>
+          <article class="stat-card"><span data-i18n="stats.relayFailures">Relay failures</span><strong id="relay-failures">0</strong><small data-i18n="stats.systemEvents">Door hardware events</small></article>
           <article class="stat-card"><span data-i18n="stats.activeMonths">Active months</span><strong id="active-months">0</strong><small data-i18n="stats.withUnlocks">With at least one unlock</small></article>
           <article class="stat-card accent"><span data-i18n="stats.busiestHour">Busiest hour</span><strong id="busiest-hour">—</strong><small id="busiest-hour-count" data-i18n="stats.noUnlocks">No unlocks yet</small></article>
         </div>
