@@ -4,8 +4,10 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+Type=simple
 User=svc-pocketbase
 Group=svc-pocketbase
+LimitNOFILE=4096
 WorkingDirectory=/srv/pocketbase
 ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090
 StandardOutput=journal
