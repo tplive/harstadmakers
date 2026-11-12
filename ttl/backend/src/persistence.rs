@@ -126,13 +126,24 @@ fn statistics_from_events(events: &[DoorEvent]) -> Result<DoorStatistics> {
     let mut weekdays = [0_u64; 7];
     let mut monthly = BTreeMap::new();
     let mut yearly = BTreeMap::new();
+    let mut denied_by_reason = BTreeMap::new();
     for event in events {
         let timestamp = event.timestamp.parse::<DateTime<Utc>>()?;
-        let bucket = if event.action == "unlock_door" {
+        let outcome = if event.outcome.is_empty() {
+            if event.action == "unlock_door" { "success" } else { "denied" }
+        } else {
+            event.outcome.as_str()
+        };
+        let bucket = if outcome == "success" {
             result.successful_unlocks += 1;
             &mut hours[timestamp.hour() as usize]
+        } else if outcome == "relay_failure" {
+            result.relay_failures += 1;
+            continue;
         } else {
             result.failed_attempts += 1;
+            let reason = event.reason.as_deref().unwrap_or("unknown");
+            *denied_by_reason.entry(reason.to_string()).or_insert(0) += 1;
             continue;
         };
         *bucket += 1;
@@ -144,6 +155,7 @@ fn statistics_from_events(events: &[DoorEvent]) -> Result<DoorStatistics> {
     result.by_weekday = weekdays.iter().enumerate().map(|(i, count)| CountByLabel { label: i.to_string(), count: *count }).collect();
     result.monthly = monthly.into_iter().map(|(label, count)| CountByLabel { label, count }).collect();
     result.yearly = yearly.into_iter().map(|(label, count)| CountByLabel { label, count }).collect();
+    result.denied_by_reason = denied_by_reason.into_iter().map(|(label, count)| CountByLabel { label, count }).collect();
     Ok(result)
 }
 

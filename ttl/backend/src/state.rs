@@ -258,7 +258,7 @@ impl AppState {
 
         if !member.active {
             warn!("unlock denied for inactive member");
-            self.record_failed_unlock_attempt()?;
+            self.record_failed_unlock_attempt("inactive_member")?;
             anyhow::bail!("member is inactive and cannot unlock the door");
         }
 
@@ -267,7 +267,7 @@ impl AppState {
             let challenge = match challenges.get(&request.challenge_id).cloned() {
                 Some(challenge) => challenge,
                 None => {
-                    self.record_failed_unlock_attempt()?;
+                    self.record_failed_unlock_attempt("challenge_missing")?;
                     warn!(
                         challenge_id = %request.challenge_id,
                         "unlock denied because challenge was not found"
@@ -277,7 +277,7 @@ impl AppState {
             };
 
             if challenge.member_id != request.member_id {
-                self.record_failed_unlock_attempt()?;
+                self.record_failed_unlock_attempt("challenge_member_mismatch")?;
                 warn!(
                     challenge_id = %request.challenge_id,
                     "unlock denied because challenge belongs to another member"
@@ -287,7 +287,7 @@ impl AppState {
 
             if Utc::now().timestamp() >= challenge.expires_at {
                 challenges.remove(&request.challenge_id);
-                self.record_failed_unlock_attempt()?;
+                self.record_failed_unlock_attempt("challenge_expired")?;
                 warn!(
                     challenge_id = %request.challenge_id,
                     "unlock denied because challenge expired"
@@ -302,7 +302,7 @@ impl AppState {
             )
             .is_err()
             {
-                self.record_failed_unlock_attempt()?;
+                self.record_failed_unlock_attempt("invalid_signature")?;
                 warn!(
                     challenge_id = %request.challenge_id,
                     "unlock denied because server nonce signature was invalid"
@@ -318,13 +318,18 @@ impl AppState {
         );
 
         // Activate the door lock relay
-        let unlock_time = self.door_lock.unlock().inspect_err(|error| {
-            error!(
-                challenge_id = %request.challenge_id,
-                error = %error,
-                "door lock activation failed"
-            );
-        })?;
+        let unlock_time = match self.door_lock.unlock() {
+            Ok(unlock_time) => unlock_time,
+            Err(error) => {
+                error!(
+                    challenge_id = %request.challenge_id,
+                    error = %error,
+                    "door lock activation failed"
+                );
+                self.record_event("relay_failure", Some("relay_error"))?;
+                return Err(error);
+            }
+        };
         info!(unlock_time = %unlock_time.to_rfc3339(), "door unlocked");
 
         let mut member = member;
@@ -341,7 +346,9 @@ impl AppState {
 
         let event = DoorEvent {
             id: Uuid::new_v4().to_string(),
-            action: "unlock_door".to_string(),
+            action: "unlock".to_string(),
+            outcome: "success".to_string(),
+            reason: None,
             timestamp: unlock_time.to_rfc3339(),
         };
 
@@ -393,24 +400,30 @@ impl AppState {
         self.event_repository.statistics()
     }
 
-    fn record_failed_unlock_attempt(&self) -> Result<()> {
+    fn record_event(&self, outcome: &str, reason: Option<&str>) -> Result<()> {
         let event = DoorEvent {
             id: Uuid::new_v4().to_string(),
-            action: "failed_unlock_attempt".to_string(),
+            action: "unlock".to_string(),
+            outcome: outcome.to_string(),
+            reason: reason.map(str::to_string),
             timestamp: Utc::now().to_rfc3339(),
         };
         let event = self.event_repository.save_event(&event)?;
         self.events.write().unwrap().push(event.clone());
-        warn!(event_id = %event.id, "failed unlock attempt recorded");
+        warn!(event_id = %event.id, outcome, reason = ?reason, "door event recorded");
         if let Err(error) = self.notifications.notify_with_kind(
             NotificationChannel::Admin,
             crate::notifications::NotificationKind::Error,
             "Failed unlock attempt",
-            &format!("A failed unlock attempt was recorded at {}.", event.timestamp),
+            &format!("A door unlock event ({outcome}) was recorded at {}.", event.timestamp),
         ) {
             warn!(error = %error, "failed unlock notification could not be sent");
         }
         Ok(())
+    }
+
+    fn record_failed_unlock_attempt(&self, reason: &str) -> Result<()> {
+        self.record_event("denied", Some(reason))
     }
 
     /// Get a reference to the door lock for testing purposes
@@ -522,7 +535,8 @@ mod tests {
         assert!(state.unlock_door(request).is_err());
         let events = state.events.read().unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0].action, "failed_unlock_attempt");
+        assert_eq!(events[0].outcome, "denied");
+        assert_eq!(events[0].reason.as_deref(), Some("inactive_member"));
     }
 
     #[test]
@@ -785,7 +799,8 @@ mod tests {
         assert!(!state.challenges.read().unwrap().contains_key(&challenge_id));
         let events = state.events.read().unwrap();
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0].action, "failed_unlock_attempt");
+        assert_eq!(events[0].outcome, "denied");
+        assert_eq!(events[0].reason.as_deref(), Some("challenge_expired"));
     }
 
     #[test]

@@ -18,6 +18,10 @@ pub struct Member {
 pub struct DoorEvent {
     pub id: String,
     pub action: String,
+    #[serde(default)]
+    pub outcome: String,
+    #[serde(default)]
+    pub reason: Option<String>,
     pub timestamp: String,
 }
 
@@ -25,6 +29,8 @@ pub struct DoorEvent {
 pub struct DoorStatistics {
     pub successful_unlocks: u64,
     pub failed_attempts: u64,
+    pub relay_failures: u64,
+    pub denied_by_reason: Vec<CountByLabel>,
     pub by_hour: Vec<CountByLabel>,
     pub by_weekday: Vec<CountByLabel>,
     pub monthly: Vec<CountByLabel>,

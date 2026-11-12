@@ -145,6 +145,10 @@ struct PocketBaseMember {
 #[derive(Serialize, Deserialize)]
 struct PocketBaseEvent {
     action: String,
+    #[serde(default)]
+    outcome: Option<String>,
+    #[serde(default)]
+    reason: Option<String>,
     timestamp: String,
 }
 
@@ -244,13 +248,24 @@ impl EventRepository for PocketBaseEventRepository {
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent> {
         let payload = json!({
             "action": event.action,
+            "outcome": event.outcome,
+            "reason": event.reason,
         });
         let response = self.client.create_record(&self.collection, &payload)?;
         let record: PocketBaseRecord<PocketBaseEvent> = serde_json::from_value(response)
             .context("PocketBase returned an invalid door event record")?;
+        let action = record.fields.action.clone();
         Ok(DoorEvent {
             id: record.id,
-            action: record.fields.action,
+            action: action.clone(),
+            outcome: record.fields.outcome.unwrap_or_else(|| {
+                if event_is_legacy_success(&action) {
+                    "success".to_string()
+                } else {
+                    "denied".to_string()
+                }
+            }),
+            reason: record.fields.reason,
             timestamp: record.fields.timestamp,
         })
     }
@@ -260,12 +275,28 @@ impl EventRepository for PocketBaseEventRepository {
             .client
             .list::<PocketBaseEvent>(&self.collection)?
             .into_iter()
-            .map(|record| DoorEvent {
-                id: record.id,
-                action: record.fields.action,
-                timestamp: record.fields.timestamp,
+            .map(|record| {
+                let action = record.fields.action.clone();
+                let outcome = record.fields.outcome.unwrap_or_else(|| {
+                    if event_is_legacy_success(&action) {
+                        "success".to_string()
+                    } else {
+                        "denied".to_string()
+                    }
+                });
+                DoorEvent {
+                    id: record.id,
+                    action,
+                    outcome,
+                    reason: record.fields.reason,
+                    timestamp: record.fields.timestamp,
+                }
             })
             .collect::<Vec<_>>();
         super::statistics_from_events(&events)
     }
+}
+
+fn event_is_legacy_success(action: &str) -> bool {
+    action == "unlock_door"
 }
