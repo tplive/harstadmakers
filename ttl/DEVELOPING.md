@@ -16,7 +16,10 @@ Standard schema for databasen importeres (i Pocketbase admin gui) fra `ttl/backe
 
 En bruker i users collection har tilgang til å lese, opprette og oppdatere (men ikke slette) poster i members. Samme bruker har tilgang til å lese og opprette (men ikke oppdatere eller slette) poster i door_events.
 
-For å konfigurere ttl-api backend for å bruke denne konfigurasjonen, bruke Impersonate user og lagre tokenet som genereres i configuration.json: `"pocketbase_token"`.
+For å konfigurere ttl-api lokalt, sett `POCKETBASE_USER_EMAIL` og
+`POCKETBASE_USER_PASSWORD` i miljøet. Backend logger inn automatisk og
+autentiserer på nytt når PocketBase-tokenet utløper. `pocketbase_token` støttes
+midlertidig kun for migrering fra den gamle impersonation-token-løsningen.
 
 Ved registrering av member vil ID autogenereres av PocketBase og returneres til nettleseren og brukes videre som `member_id` i API-forespørsler. 
 

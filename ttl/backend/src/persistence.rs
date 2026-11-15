@@ -1,8 +1,9 @@
 mod pocketbase;
 
-pub use pocketbase::PocketBaseRepositories;
+pub(crate) use pocketbase::{PocketBaseCredentials, PocketBaseRepositories};
 
 use anyhow::Result;
+use tracing::warn;
 
 use crate::configuration::Configuration;
 use crate::models::{CountByLabel, DoorEvent, DoorStatistics, Member};
@@ -32,18 +33,41 @@ pub struct Repositories {
 
 impl Repositories {
     pub fn from_configuration(configuration: &Configuration) -> Result<Self> {
-        let token = configuration.pocketbase_token.trim();
-        if token.is_empty() {
-            anyhow::bail!("pocketbase_token must be set");
-        }
-        if token == "YOUR_POCKETBASE_TOKEN" || token == "YOUR_POCKETBASE_USER_TOKEN_HERE" {
-            anyhow::bail!(
-                "pocketbase_token still contains the configuration placeholder; set a valid PocketBase token"
-            );
-        }
+        let identity = std::env::var("POCKETBASE_USER_EMAIL").unwrap_or_default();
+        let password = std::env::var("POCKETBASE_USER_PASSWORD").unwrap_or_default();
+        let credentials = match (identity.trim(), password.as_str()) {
+            ("", "") => None,
+            ("", _) | (_, "") => anyhow::bail!(
+                "POCKETBASE_USER_EMAIL and POCKETBASE_USER_PASSWORD must be set together"
+            ),
+            (identity, password) => Some(PocketBaseCredentials {
+                identity: identity.to_string(),
+                password: password.to_string(),
+            }),
+        };
+        let token = if credentials.is_none() {
+            let token = configuration.pocketbase_token.trim();
+            if token.is_empty() {
+                anyhow::bail!(
+                    "configure POCKETBASE_USER_EMAIL and POCKETBASE_USER_PASSWORD; \
+                     legacy pocketbase_token is only supported for migration"
+                );
+            }
+            if token == "YOUR_POCKETBASE_TOKEN" || token == "YOUR_POCKETBASE_USER_TOKEN_HERE" {
+                anyhow::bail!(
+                    "pocketbase_token still contains the configuration placeholder; \
+                     configure PocketBase credentials"
+                );
+            }
+            warn!("using legacy static PocketBase token; configure PocketBase credentials");
+            Some(token.to_string())
+        } else {
+            None
+        };
         Ok(PocketBaseRepositories::new(
             configuration.pocketbase_url.clone(),
-            token.to_string(),
+            token,
+            credentials,
         )?
         .into())
     }

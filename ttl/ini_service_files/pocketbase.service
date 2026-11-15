@@ -9,7 +9,8 @@ User=svc-pocketbase
 Group=svc-pocketbase
 LimitNOFILE=4096
 WorkingDirectory=/srv/pocketbase
-ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090
+SupplementaryGroups=ttl-certs
+ExecStart=/srv/pocketbase/pocketbase serve --http=127.0.0.1:8090 --https=0.0.0.0:4434
 StandardOutput=journal
 StandardError=journal
 Restart=on-failure

@@ -11,6 +11,7 @@ pub struct Configuration {
     #[allow(dead_code)]
     pub ttl_api_url: String,
     pub pocketbase_url: String,
+    #[serde(default)]
     pub pocketbase_token: String,
     #[serde(default)]
     pub discord_admin_webhook_url: Option<String>,

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use ureq::Agent;
 
 use super::{EventRepository, MemberRepository};
@@ -10,28 +10,101 @@ use crate::models::{DoorEvent, DoorStatistics, Member};
 struct PocketBaseClient {
     client: Agent,
     base_url: String,
-    authorization: String,
+    authorization: Mutex<String>,
+    credentials: Option<PocketBaseCredentials>,
+}
+
+#[derive(Clone)]
+pub(crate) struct PocketBaseCredentials {
+    pub(crate) identity: String,
+    pub(crate) password: String,
 }
 
 impl PocketBaseClient {
-    fn new(base_url: String, token: String) -> Result<Self> {
+    fn new(
+        base_url: String,
+        token: Option<String>,
+        credentials: Option<PocketBaseCredentials>,
+    ) -> Result<Self> {
         let base_url = base_url.trim_end_matches('/').to_string();
         if base_url.is_empty() {
             anyhow::bail!("POCKETBASE_URL must not be empty");
         }
-        let token = token.trim();
-        if token.is_empty() {
-            anyhow::bail!("PocketBase token must not be empty");
+        let token = token.unwrap_or_default();
+        if token.trim().is_empty() && credentials.is_none() {
+            anyhow::bail!("PocketBase credentials or token must be configured");
         }
-        Ok(Self {
+        let client = Self {
             client: Agent::new(),
             base_url,
-            authorization: token.to_string(),
-        })
+            authorization: Mutex::new(token),
+            credentials,
+        };
+        if client.credentials.is_some() {
+            client.authenticate()?;
+        }
+        Ok(client)
     }
 
     fn url(&self, collection: &str) -> String {
         format!("{}/api/collections/{collection}/records", self.base_url)
+    }
+
+    fn auth_url(&self, action: &str) -> String {
+        format!("{}/api/collections/users/{action}", self.base_url)
+    }
+
+    fn authorization(&self) -> Result<String> {
+        Ok(self
+            .authorization
+            .lock()
+            .map_err(|_| anyhow::anyhow!("PocketBase authorization lock poisoned"))?
+            .clone())
+    }
+
+    fn authenticate(&self) -> Result<()> {
+        let credentials = self
+            .credentials
+            .as_ref()
+            .context("PocketBase credentials are not configured")?;
+        let payload = json!({
+            "identity": credentials.identity,
+            "password": credentials.password,
+        });
+        let value = self
+            .response(
+                self.client
+                    .post(&self.auth_url("auth-with-password"))
+                    .set("Content-Type", "application/json")
+                    .send_string(&payload.to_string()),
+            )
+            .context("PocketBase authentication failed")?;
+        let token = value
+            .get("token")
+            .and_then(Value::as_str)
+            .filter(|token| !token.trim().is_empty())
+            .context("PocketBase authentication returned no token")?;
+        *self
+            .authorization
+            .lock()
+            .map_err(|_| anyhow::anyhow!("PocketBase authorization lock poisoned"))? =
+            token.to_string();
+        Ok(())
+    }
+
+    fn authenticated_request<F>(&self, send: F) -> Result<Value>
+    where
+        F: Fn(&str) -> Result<ureq::Response, ureq::Error>,
+    {
+        let token = self.authorization()?;
+        match send(&token) {
+            Err(ureq::Error::Status(401, _)) if self.credentials.is_some() => {
+                self.authenticate()?;
+                let refreshed_token = self.authorization()?;
+                self.response(send(&refreshed_token))
+            }
+            response => self.response(response),
+        }
     }
 
     fn response(&self, response: Result<ureq::Response, ureq::Error>) -> Result<Value> {
@@ -67,9 +140,25 @@ impl PocketBaseClient {
         let response = self
             .client
             .get(&format!("{}/{}", self.url(collection), record_id));
-        match response.set("Authorization", &self.authorization).call() {
+        match response.set("Authorization", &self.authorization()?).call() {
             Ok(response) => Ok(Some(serde_json::from_value(self.response(Ok(response))?)?)),
             Err(ureq::Error::Status(404, _)) => Ok(None),
+            Err(ureq::Error::Status(401, _)) if self.credentials.is_some() => {
+                self.authenticate()?;
+                let response = self
+                    .client
+                    .get(&format!("{}/{}", self.url(collection), record_id))
+                    .set("Authorization", &self.authorization()?)
+                    .call();
+                match response {
+                    Ok(response) => {
+                        Ok(Some(serde_json::from_value(self.response(Ok(response))?)?))
+                    }
+                    Err(ureq::Error::Status(404, _)) => Ok(None),
+                    Err(error) => Err(anyhow::Error::new(error)
+                        .context("failed to find PocketBase record after reauthentication")),
+                }
+            }
             Err(error) => Err(anyhow::Error::new(error).context("failed to find PocketBase record")),
         }
     }
@@ -78,14 +167,14 @@ impl PocketBaseClient {
         let mut page = 1;
         let mut records = Vec::new();
         loop {
-            let response = self
-                .client
-                .get(&self.url(collection))
-                .query("page", &page.to_string())
-                .query("perPage", "500")
-                .set("Authorization", &self.authorization)
-                .call();
-            let value = self.response(response)?;
+            let value = self.authenticated_request(|token| {
+                self.client
+                    .get(&self.url(collection))
+                    .query("page", &page.to_string())
+                    .query("perPage", "500")
+                    .set("Authorization", token)
+                    .call()
+            })?;
             let result: PocketBaseList<T> = serde_json::from_value(value)?;
             records.extend(result.items);
             if page >= result.total_pages {
@@ -96,23 +185,23 @@ impl PocketBaseClient {
     }
 
     fn create_record(&self, collection: &str, payload: &Value) -> Result<Value> {
-        self.response(
+        self.authenticated_request(|token| {
             self.client
                 .post(&self.url(collection))
                 .set("Content-Type", "application/json")
-                .set("Authorization", &self.authorization)
-                .send_string(&payload.to_string()),
-        )
+                .set("Authorization", token)
+                .send_string(&payload.to_string())
+        })
     }
 
     fn update(&self, collection: &str, record_id: &str, payload: &Value) -> Result<()> {
-        self.response(
+        self.authenticated_request(|token| {
             self.client
                 .patch(&format!("{}/{}", self.url(collection), record_id))
                 .set("Content-Type", "application/json")
-                .set("Authorization", &self.authorization)
-                .send_string(&payload.to_string()),
-        )?;
+                .set("Authorization", token)
+                .send_string(&payload.to_string())
+        })?;
         Ok(())
     }
 }
@@ -158,12 +247,16 @@ pub struct PocketBaseRepositories {
 }
 
 impl PocketBaseRepositories {
-    pub fn new(base_url: String, token: String) -> Result<Self> {
+    pub fn new(
+        base_url: String,
+        token: Option<String>,
+        credentials: Option<PocketBaseCredentials>,
+    ) -> Result<Self> {
         let members_collection = std::env::var("POCKETBASE_MEMBERS_COLLECTION")
             .unwrap_or_else(|_| "members".to_string());
         let events_collection = std::env::var("POCKETBASE_EVENTS_COLLECTION")
             .unwrap_or_else(|_| "door_events".to_string());
-        let client = Arc::new(PocketBaseClient::new(base_url, token)?);
+        let client = Arc::new(PocketBaseClient::new(base_url, token, credentials)?);
         Ok(Self {
             members: PocketBaseMemberRepository {
                 client: client.clone(),

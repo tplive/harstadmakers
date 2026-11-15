@@ -53,6 +53,9 @@
 - [x] Inkludere tidsstempel og målrettet medlems-ID i revisjonslogger.
 - [x] Overvåke mislykkede opplåsinger og gjentatte challenge-forespørsler.
 - [ ] Oppbevare SSH-nøkler og annen serveridentitet kun på Raspberry Pi-en.
+- [x] Gjøre PocketBase-autentisering robust uten manuell token-vedlikehold.
+  - Backend autentiserer med en dedikert PocketBase-bruker og henter nytt token automatisk når det utløper.
+  - En utløpt, manuelt generert impersonation-token i `configuration.json` var den tidligere feilkilden.
 
 ## Vertssikring og fysisk sikkerhet
 

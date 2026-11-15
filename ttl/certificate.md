@@ -12,8 +12,8 @@ acme.sh-data og sertifikatene ligger under `/opt/acme.sh`:
 /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
 ```
 
-Backend og frontend kjører som `svc-ttl-api` og `svc-ttl-frontend`. De trenger
-bare lesetilgang til de to sertifikatfilene.
+Backend, frontend og PocketBase kjører som `svc-ttl-api`, `svc-ttl-frontend` og
+`svc-pocketbase`. De trenger bare lesetilgang til de to sertifikatfilene.
 
 ## Installer acme.sh
 
@@ -70,6 +70,7 @@ Opprett en gruppe for sertifikatlesing og legg begge systembrukerne i gruppen:
 sudo groupadd --system ttl-certs
 sudo usermod --append --groups ttl-certs svc-ttl-api
 sudo usermod --append --groups ttl-certs svc-ttl-frontend
+sudo usermod --append --groups ttl-certs svc-pocketbase
 sudo usermod --append --groups ttl-certs my-admin-user
 ```
 
@@ -108,6 +109,8 @@ sudo -u svc-ttl-api test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
 sudo -u svc-ttl-api test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
 sudo -u svc-ttl-frontend test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
 sudo -u svc-ttl-frontend test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
+sudo -u svc-pocketbase test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer
+sudo -u svc-pocketbase test -r /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key
 ```
 
 ## Installer fornyelseshook
@@ -124,7 +127,7 @@ starter tjenestene:
   --reloadcmd \
     "chgrp ttl-certs /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key && \
      chmod 0640 /opt/acme.sh/ttl.harstadmakers.no_ecc/fullchain.cer /opt/acme.sh/ttl.harstadmakers.no_ecc/ttl.harstadmakers.no.key && \
-     systemctl restart ttl-api.service ttl-frontend.service"
+     systemctl restart ttl-api.service ttl-frontend.service pocketbase.service"
 ```
 
 `systemctl restart` i hooken må kjøres med tilstrekkelige rettigheter. Hvis
@@ -132,7 +135,7 @@ cron-jobben kjører som `my-admin-user`, gi kun denne kommandoen tilgang via sud
 
 ```bash
 sudo tee /etc/sudoers.d/ttl-cert-renew >/dev/null <<'EOF'
-my-admin-user ALL=(root) NOPASSWD: /usr/bin/systemctl restart ttl-api.service ttl-frontend.service
+my-admin-user ALL=(root) NOPASSWD: /usr/bin/systemctl restart ttl-api.service ttl-frontend.service pocketbase.service
 EOF
 sudo chmod 0440 /etc/sudoers.d/ttl-cert-renew
 sudo visudo --check
@@ -141,7 +144,7 @@ sudo visudo --check
 I så fall skal hookens siste kommando være:
 
 ```bash
-sudo -n systemctl restart ttl-api.service ttl-frontend.service
+sudo -n systemctl restart ttl-api.service ttl-frontend.service pocketbase.service
 ```
 
 Kontroller og test fornyelsesjobben:

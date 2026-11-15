@@ -226,7 +226,7 @@ sudo -u my-admin-user tail -n 50 /home/my-admin-user/domeneshop-expiry.log
 1. Database opprettes i `pb_data/`.
 1. Gå til Settings, Import collections og importer `ttl/backend/pb_schema.json` fra dette repoet.
 1. Opprett ny bruker i `users` collection for ttl-api. Gi brukeren lese og skrivetilgang til `members` og `door_events` collections.
-1. Konfigurer brukernavn og passord i `configuration.json`.
+1. Konfigurer PocketBase-tilgangen i `configuration.json`.
 1. Stopp Pocketbase manuell kjøring med Ctrl-C.
 1. `sudo systemctl daemon-reload`
 1. Start systemservice:
@@ -376,15 +376,15 @@ Innhold:
 
 ```ini
 POCKETBASE_URL=http://127.0.0.1:8090
-POCKETBASE_TOKEN=<server-side-token>
+POCKETBASE_USER_EMAIL=ttl-api@example.com
+POCKETBASE_USER_PASSWORD=<long-random-password>
 POCKETBASE_MEMBERS_COLLECTION=members
 POCKETBASE_EVENTS_COLLECTION=door_events
 ```
 
-Backend bruker tokenverdien direkte som `Authorization: <token>`. Bytt ut
-`YOUR_POCKETBASE_TOKEN` i `configuration.json` med et gyldig PocketBase-token.
-Tokenet må være et gyldig auth-token for en bruker i PocketBase. Backend sender
-det som `Authorization: Bearer <token>`. Importer den oppdaterte
+Backend autentiserer automatisk med brukeren og passordet, og autentiserer på
+nytt dersom PocketBase-tokenet utløper. Ikke legg passordet i
+`configuration.json`. Importer den oppdaterte
 `pb_schema.json`, eller sett tilsvarende regler manuelt:
 `@request.auth.id != ""` for list/view/create/update på `members`. For
 `door_events` er list/view/create tilstrekkelig: dørhendelser behandles som
@@ -521,20 +521,24 @@ Medlems-ID, navn, e-post og rå hendelsesposter sendes aldri til frontend.
 `door_events` må ha feltene `action` (text) og `timestamp` (autodate, on
 create).
 
-Backend-brukeren/tokenet må ha `list`, `view` og `create`-tilgang til
-`door_events`.
+Backend-brukeren må ha `list`, `view` og `create`-tilgang til `door_events`.
 
-## Token-rotasjon
+## PocketBase-credentials
 
-Ved rotasjon av PocketBase-token:
+Backend autentiserer automatisk med credentials fra
+`/etc/ttl-backend/backend.env` og henter et nytt token når det utløper. Ved
+passordrotasjon:
 
-1. Opprett et nytt server-token i PocketBase.
-2. Oppdater `/etc/ttl-backend/backend.env`.
-3. Kontroller eierskap og filrettigheter.
-4. Restart backend.
-5. Kontroller logger og `/health`.
+1. Oppdater `POCKETBASE_USER_PASSWORD` i miljøfilen.
+2. Kontroller eierskap og filrettigheter.
+3. Restart backend.
+4. Kontroller logger og `/health`.
 
-Ikke logg tokenet eller skriv det ut i feilmeldinger.
+Ikke logg credentials eller tokenet.
+
+Den tidligere løsningen brukte et manuelt generert impersonation-token. Slike
+token kunne utløpe og føre til at medlemsregistreringer feilet med HTTP 400 fra
+PocketBase.
 
 ## Nettverk og sikkerhet
 
