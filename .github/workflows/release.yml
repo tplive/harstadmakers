@@ -1,0 +1,53 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu   # Raspberry Pi ARM64
+          - x86_64-unknown-linux-gnu     # Standard x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-${{ matrix.target }} binutils-${{ matrix.target }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - name: Build release
+        run: |
+          cd ttl/backend
+          cargo build --profile release --target ${{ matrix.target }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ttl-api-${{ matrix.target }}
+          path: ttl/backend/target/${{ matrix.target }}/release/ttl-api
+          compression-level: 9
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/ttl-api-aarch64-unknown-linux-gnu/ttl-api
+            artifacts/ttl-api-x86_64-unknown-linux-gnu/ttl-api
+          draft: false
+          prerelease: false
