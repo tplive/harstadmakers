@@ -7,12 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - aarch64-unknown-linux-gnu   # Raspberry Pi ARM64
-          - x86_64-unknown-linux-gnu     # Standard x86_64
-
     steps:
       - uses: actions/checkout@v7
       - name: Install cross-compilation toolchain
@@ -20,22 +14,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y crossbuild-essential-arm64
           mkdir -p ~/.cargo
-          cat >> ~/.cargo/config <<'EOF'
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
-          EOF
+          cat >> ~/.cargo/config.toml <<'EOF'
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+EOF
       - name: Install rust target
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add aarch64-unknown-linux-gnu
       - name: Build release
         run: |
           cd ttl/backend
-          cargo build --release --target ${{ matrix.target }}
-          ls -la target/${{ matrix.target }}/release/
+          cargo build --release --target aarch64-unknown-linux-gnu
+          ls -la target/aarch64-unknown-linux-gnu/release/
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ttl-api-${{ matrix.target }}
-          path: ttl/backend/target/${{ matrix.target }}/release/ttl-api
+          name: ttl-api-aarch64-unknown-linux-gnu
+          path: ttl/backend/target/aarch64-unknown-linux-gnu/release/ttl-api
           compression-level: 9
 
   release:
@@ -48,8 +42,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            artifacts/ttl-api-aarch64-unknown-linux-gnu/ttl-api
-            artifacts/ttl-api-x86_64-unknown-linux-gnu/ttl-api
+          files: artifacts/ttl-api-aarch64-unknown-linux-gnu/ttl-api
           draft: false
           prerelease: false
