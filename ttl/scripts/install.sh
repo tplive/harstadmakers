@@ -5,7 +5,7 @@ set -euo pipefail
 REPO_OWNER="tplive"
 REPO_NAME="harstadmakers"
 TTL_VERSION="${TTL_VERSION:-latest}"
-POCKETBASE_VERSION="0.41.1"  # Or detect latest
+POCKETBASE_VERSION="0.42.3"  # Or detect latest
 # --- END CONFIG ---
 
 # Detect platform
