@@ -19,6 +19,15 @@ case "$ARCH" in
         ;;
 esac
 
+# Ensure jq is installed (needed for parsing GitHub API JSON)
+ensure_jq() {
+    if ! command -v jq &>/dev/null; then
+        echo "Installing jq..."
+        sudo apt-get update && sudo apt-get install -y jq
+        echo "jq installed"
+    fi
+}
+
 # Root and service setup (idempotent)
 setup_system() {
     # Create service users if they don't exist
@@ -147,6 +156,7 @@ main() {
         exit 1
     fi
 
+    ensure_jq
     setup_system
     install_pocketbase
     install_deno
