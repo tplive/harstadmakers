@@ -18,33 +18,24 @@ jobs:
       - name: Install cross-compilation toolchain
         run: |
           sudo apt-get update
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-          fi
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          sudo apt-get install -y crossbuild-essential-arm64
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config <<'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+      - name: Install rust target
+        run: rustup target add ${{ matrix.target }}
       - name: Build release
         run: |
           cd ttl/backend
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-            cargo build --release --target ${{ matrix.target }}
-            ls -la target/${{ matrix.target }}/release/
-          else
-            cargo build --release
-            ls -la target/release/
-          fi
+          cargo build --release --target ${{ matrix.target }}
+          ls -la target/${{ matrix.target }}/release/
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: ttl-api-${{ matrix.target }}
-          path: |
-            ttl/backend/target/${{ matrix.target }}/release/
-            ttl/backend/target/release/
+          path: ttl/backend/target/${{ matrix.target }}/release/ttl-api
           compression-level: 9
 
   release:
