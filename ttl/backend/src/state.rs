@@ -316,6 +316,56 @@ impl AppState {
         Ok(challenge)
     }
 
+    fn perform_door_unlock(&self, challenge_id: &str) -> Result<DateTime<Utc>> {
+        match self.door_lock.unlock() {
+            Ok(unlock_time) => {
+                info!(unlock_time = %unlock_time.to_rfc3339(), "door unlocked");
+                Ok(unlock_time)
+            }
+            Err(error) => {
+                error!(
+                    challenge_id = %challenge_id,
+                    error = %error,
+                    "door lock activation failed"
+                );
+                self.record_event("relay_failure", Some("relay_error"))?;
+                Err(error)
+            }
+        }
+    }
+
+    fn update_member_last_used(&self, member: &mut Member) -> Result<()> {
+        member.last_used = Some(Utc::now().to_rfc3339());
+        if let Some(cached) = self
+            .members
+            .write()
+            .expect("AppState members write lock poisoned")
+            .iter_mut()
+            .find(|item| item.id == member.id)
+        {
+            *cached = member.clone();
+        }
+        self.member_repository.update_member(member)
+    }
+
+    fn record_successful_unlock(&self, unlock_time: DateTime<Utc>) -> Result<DoorEvent> {
+        let event = DoorEvent {
+            id: Uuid::new_v4().to_string(),
+            action: "unlock".to_string(),
+            outcome: "success".to_string(),
+            reason: None,
+            timestamp: unlock_time.to_rfc3339(),
+        };
+
+        let event = self.event_repository.save_event(&event)?;
+        self.events
+            .write()
+            .expect("AppState events write lock poisoned")
+            .push(event.clone());
+        debug!(event_id = %event.id, "door event persisted");
+        Ok(event)
+    }
+
     pub fn unlock_door(&self, request: UnlockRequest) -> Result<UnlockResponse> {
         info!(
             challenge_id = %request.challenge_id,
@@ -339,49 +389,10 @@ impl AppState {
             "challenge consumed for unlock"
         );
 
-        // Activate the door lock relay
-        let unlock_time = match self.door_lock.unlock() {
-            Ok(unlock_time) => unlock_time,
-            Err(error) => {
-                error!(
-                    challenge_id = %request.challenge_id,
-                    error = %error,
-                    "door lock activation failed"
-                );
-                self.record_event("relay_failure", Some("relay_error"))?;
-                return Err(error);
-            }
-        };
-        info!(unlock_time = %unlock_time.to_rfc3339(), "door unlocked");
-
+        let unlock_time = self.perform_door_unlock(&request.challenge_id)?;
         let mut member = member;
-        member.last_used = Some(Utc::now().to_rfc3339());
-        if let Some(cached) = self
-            .members
-            .write()
-            .expect("AppState members write lock poisoned")
-            .iter_mut()
-            .find(|item| item.id == request.member_id)
-        {
-            *cached = member.clone();
-        }
-
-        let event = DoorEvent {
-            id: Uuid::new_v4().to_string(),
-            action: "unlock".to_string(),
-            outcome: "success".to_string(),
-            reason: None,
-            timestamp: unlock_time.to_rfc3339(),
-        };
-
-        let event = self.event_repository.save_event(&event)?;
-        self.events
-            .write()
-            .expect("AppState events write lock poisoned")
-            .push(event.clone());
-        debug!(event_id = %event.id, "door event persisted");
-
-        self.member_repository.update_member(&member)?;
+        self.update_member_last_used(&mut member)?;
+        let _event = self.record_successful_unlock(unlock_time)?;
 
         Ok(UnlockResponse {
             approved: true,
