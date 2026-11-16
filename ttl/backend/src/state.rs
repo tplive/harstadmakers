@@ -256,6 +256,66 @@ impl AppState {
         })
     }
 
+    fn validate_challenge_request(
+        &self,
+        request: &UnlockRequest,
+        member: &Member,
+    ) -> Result<ChallengeRecord> {
+        let mut challenges = self
+            .challenges
+            .write()
+            .expect("AppState challenges write lock poisoned");
+
+        let challenge = match challenges.get(&request.challenge_id).cloned() {
+            Some(challenge) => challenge,
+            None => {
+                self.record_failed_unlock_attempt("challenge_missing")?;
+                warn!(
+                    challenge_id = %request.challenge_id,
+                    "unlock denied because challenge was not found"
+                );
+                anyhow::bail!("challenge not found or expired");
+            }
+        };
+
+        if challenge.member_id != request.member_id {
+            self.record_failed_unlock_attempt("challenge_member_mismatch")?;
+            warn!(
+                challenge_id = %request.challenge_id,
+                "unlock denied because challenge belongs to another member"
+            );
+            anyhow::bail!("challenge does not belong to this member");
+        }
+
+        if Utc::now().timestamp() >= challenge.expires_at {
+            challenges.remove(&request.challenge_id);
+            self.record_failed_unlock_attempt("challenge_expired")?;
+            warn!(
+                challenge_id = %request.challenge_id,
+                "unlock denied because challenge expired"
+            );
+            anyhow::bail!("challenge has expired");
+        }
+
+        if verify_member_signature(
+            &member.public_key_pem,
+            &challenge.nonce,
+            &request.server_nonce_signature,
+        )
+        .is_err()
+        {
+            self.record_failed_unlock_attempt("invalid_signature")?;
+            warn!(
+                challenge_id = %request.challenge_id,
+                "unlock denied because server nonce signature was invalid"
+            );
+            anyhow::bail!("server nonce signature verification failed");
+        }
+
+        challenges.remove(&request.challenge_id);
+        Ok(challenge)
+    }
+
     pub fn unlock_door(&self, request: UnlockRequest) -> Result<UnlockResponse> {
         info!(
             challenge_id = %request.challenge_id,
@@ -271,59 +331,9 @@ impl AppState {
             anyhow::bail!("member is inactive and cannot unlock the door");
         }
 
-        {
-            let mut challenges = self
-                .challenges
-                .write()
-                .expect("AppState challenges write lock poisoned");
-            let challenge = match challenges.get(&request.challenge_id).cloned() {
-                Some(challenge) => challenge,
-                None => {
-                    self.record_failed_unlock_attempt("challenge_missing")?;
-                    warn!(
-                        challenge_id = %request.challenge_id,
-                        "unlock denied because challenge was not found"
-                    );
-                    anyhow::bail!("challenge not found or expired");
-                }
-            };
+        self.validate_challenge_request(&request, &member)
+            .context("challenge validation failed")?;
 
-            if challenge.member_id != request.member_id {
-                self.record_failed_unlock_attempt("challenge_member_mismatch")?;
-                warn!(
-                    challenge_id = %request.challenge_id,
-                    "unlock denied because challenge belongs to another member"
-                );
-                anyhow::bail!("challenge does not belong to this member");
-            }
-
-            if Utc::now().timestamp() >= challenge.expires_at {
-                challenges.remove(&request.challenge_id);
-                self.record_failed_unlock_attempt("challenge_expired")?;
-                warn!(
-                    challenge_id = %request.challenge_id,
-                    "unlock denied because challenge expired"
-                );
-                anyhow::bail!("challenge has expired");
-            }
-
-            if verify_member_signature(
-                &member.public_key_pem,
-                &challenge.nonce,
-                &request.server_nonce_signature,
-            )
-            .is_err()
-            {
-                self.record_failed_unlock_attempt("invalid_signature")?;
-                warn!(
-                    challenge_id = %request.challenge_id,
-                    "unlock denied because server nonce signature was invalid"
-                );
-                anyhow::bail!("server nonce signature verification failed");
-            }
-
-            challenges.remove(&request.challenge_id);
-        }
         info!(
             challenge_id = %request.challenge_id,
             "challenge consumed for unlock"
