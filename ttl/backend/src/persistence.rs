@@ -104,14 +104,17 @@ impl MemberRepository for std::sync::Arc<InMemoryRepositories> {
         Ok(self
             .members
             .lock()
-            .unwrap()
+            .expect("InMemoryRepositories members lock poisoned")
             .iter()
             .find(|member| member.id == member_id)
             .cloned())
     }
 
     fn save_member(&self, member: &Member) -> Result<Member> {
-        self.members.lock().unwrap().push(member.clone());
+        self.members
+            .lock()
+            .expect("InMemoryRepositories members lock poisoned")
+            .push(member.clone());
         Ok(member.clone())
     }
 
@@ -119,7 +122,7 @@ impl MemberRepository for std::sync::Arc<InMemoryRepositories> {
         if let Some(existing) = self
             .members
             .lock()
-            .unwrap()
+            .expect("InMemoryRepositories members lock poisoned")
             .iter_mut()
             .find(|existing| existing.id == member.id)
         {
@@ -132,12 +135,20 @@ impl MemberRepository for std::sync::Arc<InMemoryRepositories> {
 #[cfg(test)]
 impl EventRepository for std::sync::Arc<InMemoryRepositories> {
     fn save_event(&self, event: &DoorEvent) -> Result<DoorEvent> {
-        self.events.lock().unwrap().push(event.clone());
+        self.events
+            .lock()
+            .expect("InMemoryRepositories events lock poisoned")
+            .push(event.clone());
         Ok(event.clone())
     }
 
     fn statistics(&self) -> Result<DoorStatistics> {
-        statistics_from_events(&self.events.lock().unwrap())
+        statistics_from_events(
+            &self
+                .events
+                .lock()
+                .expect("InMemoryRepositories events lock poisoned"),
+        )
     }
 
 }
@@ -167,7 +178,7 @@ fn statistics_from_events(events: &[DoorEvent]) -> Result<DoorStatistics> {
         } else {
             result.failed_attempts += 1;
             let reason = event.reason.as_deref().unwrap_or("unknown");
-            *denied_by_reason.entry(reason.to_string()).or_insert(0) += 1;
+            *denied_by_reason.entry(reason.to_string()).or_default() += 1;
             continue;
         };
         *bucket += 1;

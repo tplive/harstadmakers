@@ -128,7 +128,10 @@ impl AppState {
         let member = self.member_repository.save_member(&member)?;
         info!("member registration persisted");
         {
-            let mut members = self.members.write().unwrap();
+            let mut members = self
+                .members
+                .write()
+                .expect("AppState members write lock poisoned");
             members.push(member.clone());
         }
 
@@ -152,7 +155,10 @@ impl AppState {
     fn find_member(&self, member_id: &str) -> Result<Option<Member>> {
         let member = self.member_repository.find_by_id(member_id)?;
         if let Some(member) = member {
-            let mut members = self.members.write().unwrap();
+            let mut members = self
+                .members
+                .write()
+                .expect("AppState members write lock poisoned");
             if let Some(cached) = members.iter_mut().find(|cached| cached.id == member.id) {
                 *cached = member.clone();
             } else {
@@ -166,7 +172,7 @@ impl AppState {
             return Ok(self
                 .members
                 .read()
-                .unwrap()
+                .expect("AppState members read lock poisoned")
                 .iter()
                 .find(|member| member.id == member_id)
                 .cloned());
@@ -207,7 +213,10 @@ impl AppState {
         }
 
         let (challenge_id, nonce, challenge_expires_at) = {
-            let mut challenges = self.challenges.write().unwrap();
+            let mut challenges = self
+                .challenges
+                .write()
+                .expect("AppState challenges write lock poisoned");
             loop {
                 let challenge_id = Uuid::new_v4().to_string();
                 let nonce = random_nonce();
@@ -263,7 +272,10 @@ impl AppState {
         }
 
         {
-            let mut challenges = self.challenges.write().unwrap();
+            let mut challenges = self
+                .challenges
+                .write()
+                .expect("AppState challenges write lock poisoned");
             let challenge = match challenges.get(&request.challenge_id).cloned() {
                 Some(challenge) => challenge,
                 None => {
@@ -337,7 +349,7 @@ impl AppState {
         if let Some(cached) = self
             .members
             .write()
-            .unwrap()
+            .expect("AppState members write lock poisoned")
             .iter_mut()
             .find(|item| item.id == request.member_id)
         {
@@ -353,7 +365,10 @@ impl AppState {
         };
 
         let event = self.event_repository.save_event(&event)?;
-        self.events.write().unwrap().push(event.clone());
+        self.events
+            .write()
+            .expect("AppState events write lock poisoned")
+            .push(event.clone());
         debug!(event_id = %event.id, "door event persisted");
 
         self.member_repository.update_member(&member)?;
@@ -376,7 +391,10 @@ impl AppState {
         if !member.active {
             anyhow::bail!("member is inactive and cannot view statistics");
         }
-        let mut challenges = self.challenges.write().unwrap();
+        let mut challenges = self
+            .challenges
+            .write()
+            .expect("AppState challenges write lock poisoned");
         let challenge = challenges
             .get(&request.challenge_id)
             .cloned()
@@ -409,7 +427,10 @@ impl AppState {
             timestamp: Utc::now().to_rfc3339(),
         };
         let event = self.event_repository.save_event(&event)?;
-        self.events.write().unwrap().push(event.clone());
+        self.events
+            .write()
+            .expect("AppState events write lock poisoned")
+            .push(event.clone());
         warn!(event_id = %event.id, outcome, reason = ?reason, "door event recorded");
         if let Err(error) = self.notifications.notify_with_kind(
             NotificationChannel::Admin,
@@ -444,7 +465,8 @@ mod tests {
 
     fn temp_state() -> AppState {
         let repositories = std::sync::Arc::new(InMemoryRepositories::new());
-        AppState::new(generate_test_server_identity(), repositories.into()).unwrap()
+        AppState::new(generate_test_server_identity(), repositories.into())
+            .expect("failed to create temp state")
     }
 
     #[test]
@@ -470,22 +492,31 @@ mod tests {
         };
 
         {
-            let mut members = state.members.write().unwrap();
+            let mut members = state
+                .members
+                .write()
+                .expect("test: members write lock poisoned");
             members.push(member.clone());
         }
 
         // Manually activate member (simulating administrator activation)
         {
-            let mut members = state.members.write().unwrap();
+            let mut members = state
+                .members
+                .write()
+                .expect("test: members write lock poisoned");
             let saved = members
                 .iter_mut()
                 .find(|item| item.id == member.id)
-                .unwrap();
+                .expect("test: member not found in cache");
             saved.active = true;
         }
 
         {
-            let members = state.members.read().unwrap();
+            let members = state
+                .members
+                .read()
+                .expect("test: members read lock poisoned");
             let saved = members.iter().find(|item| item.id == member.id).unwrap();
             assert!(saved.active);
         }

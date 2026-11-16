@@ -100,7 +100,8 @@ mod tests {
     #[test]
     fn uses_default_path_without_arguments() {
         assert_eq!(
-            Configuration::path_from_args(["ttl-api"]).unwrap(),
+            Configuration::path_from_args(["ttl-api"])
+                .expect("path_from_args should succeed with no arguments"),
             PathBuf::from("configuration.json")
         );
     }
@@ -108,18 +109,21 @@ mod tests {
     #[test]
     fn accepts_short_and_long_config_options() {
         assert_eq!(
-            Configuration::path_from_args(["ttl-api", "-c", "custom.json"]).unwrap(),
+            Configuration::path_from_args(["ttl-api", "-c", "custom.json"])
+                .expect("path_from_args should succeed with -c option"),
             PathBuf::from("custom.json")
         );
         assert_eq!(
-            Configuration::path_from_args(["ttl-api", "--config", "custom.json"]).unwrap(),
+            Configuration::path_from_args(["ttl-api", "--config", "custom.json"])
+                .expect("path_from_args should succeed with --config option"),
             PathBuf::from("custom.json")
         );
     }
 
     #[test]
     fn rejects_missing_config_path() {
-        let error = Configuration::path_from_args(["ttl-api", "-c"]).unwrap_err();
+        let error = Configuration::path_from_args(["ttl-api", "-c"])
+            .expect_err("path_from_args should fail with missing path");
         assert!(error.to_string().contains("missing path"));
     }
 
@@ -138,7 +142,7 @@ mod tests {
                 "tls_private_key_path": "private-key.pem"
             }"#,
         )
-        .unwrap();
+        .expect("serde_json::from_str should succeed with valid JSON");
 
         assert_eq!(configuration.bind_address, "0.0.0.0:3000");
         assert_eq!(configuration.relay_gpio_pin, 18);
@@ -167,7 +171,7 @@ mod tests {
                 "discord_access_webhook_url": "https://discord.example.com/access"
             }"#,
         )
-        .unwrap();
+        .expect("serde_json::from_str should succeed with discord webhooks");
 
         assert_eq!(
             configuration.discord_admin_webhook_url.as_deref(),

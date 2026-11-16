@@ -30,15 +30,24 @@ impl MockDoorLock {
     }
 
     pub fn unlock_timestamps(&self) -> Vec<DateTime<Utc>> {
-        self.unlock_timestamps.lock().unwrap().clone()
+        self.unlock_timestamps
+            .lock()
+            .expect("MockDoorLock timestamps lock poisoned")
+            .clone()
     }
 
     pub fn clear(&self) {
-        self.unlock_timestamps.lock().unwrap().clear();
+        self.unlock_timestamps
+            .lock()
+            .expect("MockDoorLock timestamps lock poisoned")
+            .clear();
     }
 
     pub fn set_door_open(&self, door_open: bool) {
-        *self.door_open.lock().unwrap() = door_open;
+        *self
+            .door_open
+            .lock()
+            .expect("MockDoorLock door_open lock poisoned") = door_open;
     }
 }
 
@@ -51,24 +60,34 @@ impl Default for MockDoorLock {
 impl DoorLock for MockDoorLock {
     fn unlock(&self) -> Result<DateTime<Utc>> {
         let now = Utc::now();
-        self.unlock_timestamps.lock().unwrap().push(now);
+        self.unlock_timestamps
+            .lock()
+            .expect("MockDoorLock timestamps lock poisoned")
+            .push(now);
         Ok(now)
     }
 
     fn was_unlocked_between(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> bool {
         self.unlock_timestamps
             .lock()
-            .unwrap()
+            .expect("MockDoorLock timestamps lock poisoned")
             .iter()
             .any(|&timestamp| timestamp >= start && timestamp <= end)
     }
 
     fn last_unlock_time(&self) -> Option<DateTime<Utc>> {
-        self.unlock_timestamps.lock().unwrap().last().cloned()
+        self.unlock_timestamps
+            .lock()
+            .expect("MockDoorLock timestamps lock poisoned")
+            .last()
+            .cloned()
     }
 
     fn is_door_open(&self) -> bool {
-        *self.door_open.lock().unwrap()
+        *self
+            .door_open
+            .lock()
+            .expect("MockDoorLock door_open lock poisoned")
     }
 }
 
@@ -99,7 +118,10 @@ impl HardwareDoorLock {
 
 impl DoorLock for HardwareDoorLock {
     fn unlock(&self) -> Result<DateTime<Utc>> {
-        let mut relay = self.relay.lock().unwrap();
+        let mut relay = self
+            .relay
+            .lock()
+            .expect("HardwareDoorLock relay lock poisoned");
         relay.set_high();
         std::thread::sleep(self.unlock_duration);
         relay.set_low();
@@ -115,7 +137,10 @@ impl DoorLock for HardwareDoorLock {
     }
 
     fn is_door_open(&self) -> bool {
-        self.hall_sensor.lock().unwrap().is_low()
+        self.hall_sensor
+            .lock()
+            .expect("HardwareDoorLock hall_sensor lock poisoned")
+            .is_low()
     }
 }
 
@@ -127,7 +152,7 @@ mod tests {
     fn mock_door_lock_records_unlock() {
         let mock = MockDoorLock::new();
         let before = Utc::now();
-        let result = mock.unlock().unwrap();
+        let result = mock.unlock().expect("unlock failed");
         let after = Utc::now();
 
         assert!(result >= before && result <= after);
@@ -138,16 +163,16 @@ mod tests {
     #[test]
     fn mock_door_lock_tracks_multiple_unlocks() {
         let mock = MockDoorLock::new();
-        mock.unlock().unwrap();
-        mock.unlock().unwrap();
-        mock.unlock().unwrap();
+        mock.unlock().expect("unlock failed");
+        mock.unlock().expect("unlock failed");
+        mock.unlock().expect("unlock failed");
         assert_eq!(mock.unlock_timestamps().len(), 3);
     }
 
     #[test]
     fn mock_door_lock_clear() {
         let mock = MockDoorLock::new();
-        mock.unlock().unwrap();
+        mock.unlock().expect("unlock failed");
         mock.clear();
         assert!(mock.unlock_timestamps().is_empty());
     }
@@ -157,7 +182,7 @@ mod tests {
         let mock = MockDoorLock::new();
         let start = Utc::now();
         std::thread::sleep(Duration::from_millis(10));
-        mock.unlock().unwrap();
+        mock.unlock().expect("unlock failed");
         let end = Utc::now();
 
         assert!(mock.was_unlocked_between(start, end));

@@ -62,10 +62,16 @@ async fn create_member_handler(
 ) -> impl IntoResponse {
     info!("member registration requested");
     match state.add_member(payload) {
-        Ok(registration) => (
-            StatusCode::CREATED,
-            Json(serde_json::to_value(registration).unwrap()),
-        ),
+        Ok(registration) => match serde_json::to_value(registration) {
+            Ok(value) => (StatusCode::CREATED, Json(value)),
+            Err(error) => {
+                warn!(error = %error, "member registration serialization failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "Internal server error" })),
+                )
+            }
+        },
         Err(error) => {
             warn!(error = %error, "member registration rejected");
             (
@@ -82,10 +88,16 @@ async fn challenge_handler(
 ) -> impl IntoResponse {
     info!("challenge requested");
     match state.generate_challenge(payload) {
-        Ok(response) => (
-            StatusCode::OK,
-            Json(serde_json::to_value(response).unwrap()),
-        ),
+        Ok(response) => match serde_json::to_value(response) {
+            Ok(value) => (StatusCode::OK, Json(value)),
+            Err(error) => {
+                warn!(error = %error, "challenge serialization failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "Internal server error" })),
+                )
+            }
+        },
         Err(error) => {
             warn!(error = %error, "challenge request rejected");
             (
@@ -105,10 +117,16 @@ async fn unlock_handler(
         "door unlock requested"
     );
     match state.unlock_door(payload) {
-        Ok(response) => (
-            StatusCode::OK,
-            Json(serde_json::to_value(response).unwrap()),
-        ),
+        Ok(response) => match serde_json::to_value(response) {
+            Ok(value) => (StatusCode::OK, Json(value)),
+            Err(error) => {
+                warn!(error = %error, "unlock response serialization failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "Internal server error" })),
+                )
+            }
+        },
         Err(error) => {
             warn!(error = %error, "door unlock rejected");
             (
