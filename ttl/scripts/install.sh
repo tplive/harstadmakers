@@ -50,7 +50,19 @@ install_pocketbase() {
     fi
 
     echo "Installing PocketBase $POCKETBASE_VERSION..."
-    local url="https://ganigeorgiev.com/pocketbase/pocketbase/releases/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_arm64.zip"
+    # Map architecture for PocketBase (uses arm64/amd64, not aarch64/x86_64)
+    local pb_arch
+    case "$ARCH" in
+        aarch64) pb_arch="arm64" ;;
+        x86_64)  pb_arch="amd64" ;;
+        *) 
+            echo "Unsupported architecture for PocketBase: $ARCH"
+            exit 1
+            ;;
+    esac
+
+    local 
+    local url="https://ganigeorgiev.com/pocketbase/pocketbase/releases/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_$(pb_arch).zip"
     local tmp=$(mktemp -d)
     curl -fsSL "$url" -o "$tmp/pocketbase.zip"
     unzip -d "$tmp" "$tmp/pocketbase.zip"
