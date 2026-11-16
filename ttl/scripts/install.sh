@@ -61,8 +61,7 @@ install_pocketbase() {
             ;;
     esac
 
-    local 
-    local url="https://ganigeorgiev.com/pocketbase/pocketbase/releases/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_${pb_arch}.zip"
+    local url="https://ganigeorgiev.com/meta/pocketbase/pocketbase/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_${pb_arch}.zip"
     local tmp=$(mktemp -d)
     curl -fsSL "$url" -o "$tmp/pocketbase.zip"
     unzip -d "$tmp" "$tmp/pocketbase.zip"
