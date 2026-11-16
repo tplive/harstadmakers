@@ -18,7 +18,9 @@ jobs:
       - name: Install cross-compilation toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-${{ matrix.target }} binutils-${{ matrix.target }}
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          fi
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
