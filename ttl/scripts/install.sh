@@ -50,7 +50,7 @@ install_pocketbase() {
     fi
 
     echo "Installing PocketBase $POCKETBASE_VERSION..."
-    local url="https://github.com/pocketbase/pocketbase/releases/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_arm64.zip"
+    local url="https://ganigeorgiev.com/pocketbase/pocketbase/releases/download/v$POCKETBASE_VERSION/pocketbase_${POCKETBASE_VERSION}_linux_arm64.zip"
     local tmp=$(mktemp -d)
     curl -fsSL "$url" -o "$tmp/pocketbase.zip"
     unzip -d "$tmp" "$tmp/pocketbase.zip"
