@@ -368,8 +368,8 @@ Sikre PocketBase-mappen slik at bare PocketBase-brukeren kan skrive til
 Opprett en root-eid miljøfil utenfor Git-repositoriet:
 
 ```bash
-sudo install -d -m 750 /etc/ttl-backend
-sudoedit /etc/ttl-backend/backend.env
+sudo install -d -m 750 /srv/ttl-api
+sudoedit /srv/ttl-api/ttl-api.env
 ```
 
 Innhold:
