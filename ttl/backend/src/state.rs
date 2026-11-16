@@ -182,21 +182,7 @@ impl AppState {
         Ok(None)
     }
 
-    pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
-        info!("processing challenge request");
-        let member = self
-            .find_member(&request.member_id)?
-            .context("member not found")?;
-        verify_member_signature(
-            &member.public_key_pem,
-            &request.client_nonce,
-            &request.client_nonce_signature,
-        )
-        .context("client nonce signature verification failed")
-        .inspect_err(|error| {
-            warn!(error = %error, "client nonce signature rejected");
-        })?;
-
+    fn validate_challenge_eligible(&self, member: &Member) -> Result<()> {
         let expires_at = DateTime::parse_from_rfc3339(&member.expires_at)
             .context("member expiration timestamp is invalid")?
             .with_timezone(&Utc);
@@ -212,34 +198,57 @@ impl AppState {
             anyhow::bail!("member is inactive and cannot request a door challenge");
         }
 
-        let (challenge_id, nonce, challenge_expires_at) = {
-            let mut challenges = self
-                .challenges
-                .write()
-                .expect("AppState challenges write lock poisoned");
-            loop {
-                let challenge_id = Uuid::new_v4().to_string();
-                let nonce = random_nonce();
-                let challenge_expires_at =
-                    Utc::now() + chrono::Duration::minutes(self.challenge_expiry_minutes);
-                let id_is_unique = !challenges.contains_key(&challenge_id);
-                let nonce_is_unique = !challenges
-                    .values()
-                    .any(|challenge| challenge.nonce == nonce);
+        Ok(())
+    }
 
-                if id_is_unique && nonce_is_unique {
-                    challenges.insert(
-                        challenge_id.clone(),
-                        ChallengeRecord {
-                            member_id: member.id.clone(),
-                            nonce: nonce.clone(),
-                            expires_at: challenge_expires_at.timestamp(),
-                        },
-                    );
-                    break (challenge_id, nonce, challenge_expires_at);
-                }
+    fn generate_unique_challenge(&self, member_id: &str) -> (String, String, DateTime<Utc>) {
+        let mut challenges = self
+            .challenges
+            .write()
+            .expect("AppState challenges write lock poisoned");
+        loop {
+            let challenge_id = Uuid::new_v4().to_string();
+            let nonce = random_nonce();
+            let challenge_expires_at =
+                Utc::now() + chrono::Duration::minutes(self.challenge_expiry_minutes);
+            let id_is_unique = !challenges.contains_key(&challenge_id);
+            let nonce_is_unique = !challenges
+                .values()
+                .any(|challenge| challenge.nonce == nonce);
+
+            if id_is_unique && nonce_is_unique {
+                challenges.insert(
+                    challenge_id.clone(),
+                    ChallengeRecord {
+                        member_id: member_id.to_string(),
+                        nonce: nonce.clone(),
+                        expires_at: challenge_expires_at.timestamp(),
+                    },
+                );
+                return (challenge_id, nonce, challenge_expires_at);
             }
-        };
+        }
+    }
+
+    pub fn generate_challenge(&self, request: ChallengeRequest) -> Result<ChallengeResponse> {
+        info!("processing challenge request");
+        let member = self
+            .find_member(&request.member_id)?
+            .context("member not found")?;
+        verify_member_signature(
+            &member.public_key_pem,
+            &request.client_nonce,
+            &request.client_nonce_signature,
+        )
+        .context("client nonce signature verification failed")
+        .inspect_err(|error| {
+            warn!(error = %error, "client nonce signature rejected");
+        })?;
+
+        self.validate_challenge_eligible(&member)?;
+
+        let (challenge_id, nonce, challenge_expires_at) =
+            self.generate_unique_challenge(&member.id);
 
         info!(
             challenge_id = %challenge_id,
